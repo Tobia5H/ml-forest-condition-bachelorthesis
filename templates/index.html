@@ -240,7 +240,7 @@
         <div id="title">
             <h1>Detectree2 Web Interface</h1>
         </div>
-        <!--button id="map-toggle-button" onclick="toggleMap()">Toggle Map</button-->
+        <button id="map-toggle-button" onclick="toggleMap()">Toggle Map</button>
 
         <div id="map-container">
             <div id="map"></div>
@@ -326,7 +326,7 @@
                 contentType: false,
                 processData: false,
                 success: function(data) {
-                    $('#input_image').attr('src', '/uploads/' + data.filename.replace(/\.[^/.]+$/, ".png"));
+                    $('#input_image').attr('src', data.displaypath);
                     $('#input_image').data('filepath', data.filepath);
                     // Hide the spinner
                     $('#loading-spinner-input').hide();
@@ -404,6 +404,11 @@
                 [bounds[0][0], bounds[1][1]],
                 [bounds[0][0], bounds[0][1]]
             ];
+
+
+            $('#loading-spinner-input').show();
+            $('#input_image').hide();
+            $('#error-message').hide();
     
             $.ajax({
                 url: '/download_image',
@@ -411,10 +416,16 @@
                 contentType: 'application/json',
                 data: JSON.stringify({ coordinates: coordinates }),
                 success: function(data) {
-                    $('#output_image').attr('src', '/display/' + data.displaypath);
-                    $('#output_image').show();
+                    $('#input_image').attr('src', data.displaypath);
+                    $('#input_image').data('filepath', data.filepath);
+                    // Hide the spinner
+                    $('#loading-spinner-input').hide();
+                    $('#input_image').show();
                 },
                 error: function() {
+                    // Hide the spinner if there is an error
+                    $('#loading-spinner-input').hide();
+                    $('#error-message').show().delay(5000).fadeOut();
                     alert('An error occurred while downloading the image.');
                 }
             });

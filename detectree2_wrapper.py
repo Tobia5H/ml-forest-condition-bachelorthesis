@@ -37,17 +37,14 @@ class Detectree2:
         if image_path.suffix.lower() not in ['.tif', '.tiff', '.png', '.jpg', '.jpeg']:
             raise ValueError("Unsupported file format. Please provide a .tif, .png, or .jpg image.")
 
-        if image_path.suffix.lower() in ['.png', '.jpg', '.jpeg']:
-            image_path = self.convert_to_tif(image_path)
-
         data = rasterio.open(image_path)
 
         site_path = self.settings['main']['site_path']
         tiles_path = self.settings['main']['tiles_path']
 
-        buffer = self.settings['tiling']['buffer']
-        tile_width = self.settings['tiling']['tile_width']
-        tile_height = self.settings['tiling']['tile_height']
+        buffer = int(self.settings['tiling']['buffer'])
+        tile_width = int(self.settings['tiling']['tile_width'])
+        tile_height = int(self.settings['tiling']['tile_height'])
         
         tile_data(data, tiles_path, buffer, tile_width, tile_height, dtype_bool=True)
 
@@ -58,7 +55,7 @@ class Detectree2:
 
         crowns = stitch_crowns(tiles_path + "predictions_geo/", 1)
         clean = clean_crowns(crowns, 0.6, confidence=0)
-        clean = clean[clean["Confidence_score"] > self.settings['crown']['confidence']]
+        clean = clean[clean["Confidence_score"] > float(self.settings['crown']['confidence'])]
         clean = clean.set_geometry(clean.simplify(0.3))
         clean.to_file(site_path + "/crowns_out.gpkg")
 
