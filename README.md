@@ -4,20 +4,27 @@ Dieses Repository enthält das Programmierprojekt zur Bachelorarbeit "Zustandsbe
 
 ## Installation
 
-Um das Programm zu nutzen, installieren Sie bitte DeepForest gemäß der Anleitung unter:
-[DeepForest Installation](https://deepforest.readthedocs.io/en/latest/installation.html)
+Um das Programm zu nutzen, installieren Sie bitte die notwendigen Pakete, indem Sie die `requirements.txt` Datei ausführen:
 
-Zusätzlich sind folgende Pakete mittels `pip` oder `conda` zu installieren:
-- `matplotlib`
-- `PIL`
-- `tkinter`
+```bash
+pip install -r requirements.txt
+```
+
+Das Modell verwendet jetzt **Detectree2**, welches Sie unter folgendem Link finden:
+[Detectree2 auf GitHub](https://github.com/PatBall1/detectree2).
+
+Bitte beachten Sie, dass das Programm nur auf Linux-basierten Systemen läuft.
 
 ## Funktionalität
 
-Derzeit bietet das Programm eine einfache grafische Benutzeroberfläche (GUI) für das vortrainierte Modell des DeepForest Frameworks.
+Derzeit bietet das Programm folgende Funktionen:
+
+- Eine interaktive Karte zur Auswahl der zu evaluierenden Gebiete.
+- NDVI Parameteranalyse zur Bewertung des Waldzustands.
+- Aufteilen großer Gebiete in kleinere, analysierbare Bereiche.
+- Nutzung des vortrainierten Modells des DeepForest Frameworks.
 
 ## ToDo
 
-- Implementierung einer interaktiven Karte zur Auswahl der zu evaluierenden Gebiete
-- Aufteilen großer Gebiete in kleinere, analysierbare Bereiche
-- Integration von Parametern zur detaillierten Analyse des Waldzustands
+- Weitere Optimierungen und Tests auf verschiedenen Linux-basierten Systemen.
+- Verbesserungen in der Benutzerfreundlichkeit der interaktiven Karte.
