@@ -1,14 +1,26 @@
+from logger_config import LoggerConfig
 import geopandas as gpd
 import rasterio
 import rasterio.mask
 import numpy as np
 import matplotlib.pyplot as plt
 
+from image_converter import TifImageConverter
+
 class NDVIAnalyzer:
     def __init__(self):
         """
         Initializes the NDVIAnalyzer class.
+
+        Attributes:
+            shapefile_path (str): Path to the shapefile containing polygons.
+            ndvi_path (str): Path to the NDVI GeoTIFF image.
+            gdf (geopandas.GeoDataFrame): Geodataframe containing the loaded polygons.
+            ndvi_image (np.ndarray): Array representation of the NDVI image.
+            ndvi_meta (dict): Metadata of the NDVI GeoTIFF image.
         """
+        self.logger = LoggerConfig.get_logger(self.__class__.__name__)
+        self.tifconverter = TifImageConverter(output_directory='uploads/')
         self.shapefile_path = None
         self.ndvi_path = None
         self.gdf = None
@@ -22,6 +34,7 @@ class NDVIAnalyzer:
         Returns:
             geopandas.GeoDataFrame: Geodataframe containing the loaded polygons.
         """
+        self.logger.info(f"Loading shapefile from {self.shapefile_path}.")
         self.gdf = gpd.read_file(self.shapefile_path)
         return self.gdf
 
@@ -32,6 +45,9 @@ class NDVIAnalyzer:
         Returns:
             tuple: A tuple containing the NDVI image array and its metadata.
         """
+        self.logger.info(f"Loading NDVI image from {self.ndvi_path}.")
+        self.ndvi_path = self.tifconverter.convert_to_uint8(self.ndvi_path)
+        
         with rasterio.open(self.ndvi_path) as src:
             self.ndvi_image = src.read(1)  # Read the first band
             self.ndvi_meta = src.meta
@@ -45,8 +61,10 @@ class NDVIAnalyzer:
             np.ndarray: The masked NDVI image array.
         """
         if self.gdf is None or self.ndvi_image is None:
+            self.logger.error("Shapefile or NDVI image not loaded.")
             raise ValueError("Shapefile or NDVI image not loaded.")
 
+        self.logger.info("Masking NDVI image using shapefile polygons.")
         # Convert geometries in shapefile to the same CRS as the NDVI image
         self.gdf = self.gdf.to_crs(self.ndvi_meta['crs'])
 
@@ -55,6 +73,7 @@ class NDVIAnalyzer:
             out_image, out_transform = rasterio.mask.mask(src, self.gdf.geometry, crop=True, all_touched=True)
             out_image = out_image[0]  # Extract the first band
 
+        self.logger.info("NDVI image masked successfully.")
         return out_image
 
     def calculate_ndvi_statistics(self, masked_ndvi):
@@ -67,6 +86,7 @@ class NDVIAnalyzer:
         Returns:
             dict: A dictionary containing the mean, median, standard deviation, minimum, and maximum NDVI values.
         """
+        self.logger.info("Calculating NDVI statistics.")
         ndvi_values = masked_ndvi[masked_ndvi > 0]  # Ignore zero values that are outside the polygons
 
         ndvi_stats = {
@@ -77,6 +97,7 @@ class NDVIAnalyzer:
             'NDVI_max': np.max(ndvi_values)
         }
 
+        self.logger.info(f"NDVI statistics calculated: {ndvi_stats}")
         return ndvi_stats
 
     def plot_masked_ndvi(self, masked_ndvi):
@@ -86,6 +107,7 @@ class NDVIAnalyzer:
         Args:
             masked_ndvi (np.ndarray): The masked NDVI image array.
         """
+        self.logger.info("Plotting masked NDVI image.")
         masked_array = np.ma.masked_where(masked_ndvi <= 0, masked_ndvi)
         cmap = plt.cm.gray
         cmap.set_bad(color='pink')
@@ -95,10 +117,21 @@ class NDVIAnalyzer:
         plt.title('Masked NDVI Image')
         plt.colorbar(label='NDVI Values')
         plt.show()
-        
+
     def calculate(self, shapefile_path, ndvi_path):
+        """
+        Executes the full NDVI analysis workflow.
+
+        Args:
+            shapefile_path (str): Path to the shapefile containing polygons.
+            ndvi_path (str): Path to the NDVI GeoTIFF image.
+
+        Returns:
+            dict: A dictionary containing NDVI statistics.
+        """
+        self.logger.info("Starting NDVI analysis.")
         self.shapefile_path = shapefile_path
-        self.ndvi_image = ndvi_path
+        self.ndvi_path = ndvi_path
         self.load_shapefile()
         self.load_ndvi_image()
         
@@ -108,28 +141,3 @@ class NDVIAnalyzer:
         # Calculate NDVI statistics
         return self.calculate_ndvi_statistics(masked_ndvi)
 
-
-# Example usage:
-# if __name__ == "__main__":
-#     shapefile_path = 'outputs/crowns_out.gpkg'
-#     ndvi_path = 'uploads/ndvi_20240815_22622.tif'
-
-#     analyzer = NDVIAnalyzer(shapefile_path, ndvi_path)
-    
-#     # Load data
-#     analyzer.load_shapefile()
-#     analyzer.load_ndvi_image()
-    
-#     # Mask the NDVI image
-#     masked_ndvi = analyzer.mask_ndvi_image()
-    
-#     # Calculate NDVI statistics
-#     stats = analyzer.calculate_ndvi_statistics(masked_ndvi)
-#     print(f"NDVI Mean: {stats['NDVI_mean']}")
-#     print(f"NDVI Median: {stats['NDVI_median']}")
-#     print(f"NDVI Standard Deviation: {stats['NDVI_std']}")
-#     print(f"NDVI Minimum: {stats['NDVI_min']}")
-#     print(f"NDVI Maximum: {stats['NDVI_max']}")
-    
-#     # Plot the masked NDVI image
-#     analyzer.plot_masked_ndvi(masked_ndvi)
