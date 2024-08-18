@@ -1,10 +1,10 @@
-from pathlib import Path
 from PIL import Image
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import rasterio
 import io
 import os
+import psutil
 
 from detectree2.preprocessing.tiling import tile_data
 from detectree2.models.outputs import project_to_geojson, stitch_crowns, clean_crowns
@@ -15,20 +15,24 @@ from detectron2.engine import DefaultPredictor
 from logger_config import LoggerConfig
 
 class Detectree2:
-    def __init__(self, settings):
-        """
-        Initializes the Detectree2 class with the provided settings.
+    _instance = None
 
-        Args:
-            settings (dict): A dictionary containing settings for tiling, crown confidence, and file paths.
-        """
-        self.logger = LoggerConfig.get_logger(self.__class__.__name__)
-        self.settings = settings
-        self.logger.info(f"Detectree2 initialized with settings: {settings}")
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(Detectree2, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self, settings):
+        if not self._initialized:
+            self.logger = LoggerConfig().get_logger(self.__class__.__name__)
+            self.settings = settings
+            self.logger.info(f"Detectree2 initialized with settings: {settings}")
+            self._initialized = True
 
     def convert_to_tif(self, image_path):
         """
-        Convert an image to TIFF format.
+        Converts an image to TIFF format.
 
         Args:
             image_path (Path): The path to the image to be converted.
@@ -46,7 +50,7 @@ class Detectree2:
 
     def load_model(self, model_path):
         """
-        Load the model configuration.
+        Loads the model configuration.
 
         Args:
             model_path (Path): The path to the model configuration file.
@@ -62,7 +66,7 @@ class Detectree2:
 
     def evaluate_image(self, image_path, model_path):
         """
-        Evaluate an image using the provided model.
+        Evaluates an image using the provided model.
 
         Args:
             image_path (Path): The path to the image to be evaluated.
@@ -73,6 +77,7 @@ class Detectree2:
 
         Raises:
             ValueError: If the image file format is unsupported.
+            RuntimeError: If the tile size is too big for the virtual machine.
         """
         self.logger.info(f"Evaluating image {image_path} using model {model_path}")
         if image_path.suffix.lower() not in ['.tif', '.tiff', '.png', '.jpg', '.jpeg']:
@@ -93,13 +98,18 @@ class Detectree2:
 
         cfg = self.load_model(model_path)
         
-        self.logger.info("Predicting on the tiled data.")
-        predict_on_data(tiles_path, predictor=DefaultPredictor(cfg))
-        project_to_geojson(tiles_path, tiles_path + "predictions/", tiles_path + "predictions_geo/")
+        if self._check_tile_size(tiles_path):
+            self.logger.info("Predicting on the tiled data.")
+            predict_on_data(tiles_path, predictor=DefaultPredictor(cfg))
+        else:
+            raise RuntimeError("Tile size is too big for this VM. Please decrease tile size and try again.")
 
+        project_to_geojson(tiles_path, tiles_path + "predictions/", tiles_path + "predictions_geo/")
         self.logger.info("Stitching and cleaning crowns.")
+        
+        crown_confidence = float(self.settings['crown']['confidence'])
         crowns = stitch_crowns(tiles_path + "predictions_geo/", 1)
-        clean = clean_crowns(crowns, 0.6, confidence=0)
+        clean = clean_crowns(crowns, 0.6, crown_confidence)
         clean = clean[clean["Confidence_score"] > float(self.settings['crown']['confidence'])]
         clean = clean.set_geometry(clean.simplify(0.3))
         clean.to_file(site_path + "/crowns_out.gpkg")
@@ -110,7 +120,7 @@ class Detectree2:
 
     def plot_base_image(self, image_path):
         """
-        Plot the base image.
+        Plots the base image.
 
         Args:
             image_path (Path): The path to the image to be plotted.
@@ -125,7 +135,7 @@ class Detectree2:
 
     def plot_geopackage(self, gpkg_path, image_size):
         """
-        Plot the GeoPackage geometries over the image.
+        Plots the GeoPackage geometries over the image.
 
         Args:
             gpkg_path (Path): The path to the GeoPackage file.
@@ -150,7 +160,7 @@ class Detectree2:
 
     def overlay_image_with_gpkg(self, image_path, gpkg_path):
         """
-        Overlay the base image with GeoPackage geometries.
+        Overlays the base image with GeoPackage geometries.
 
         Args:
             image_path (Path): The path to the base image.
@@ -182,3 +192,28 @@ class Detectree2:
 
         self.logger.info("Overlay completed and image resized if necessary.")
         return img
+
+    def _check_tile_size(self, folder_path):
+        """
+        Checks if the tile size is appropriate for the available memory.
+
+        Args:
+            folder_path (str): Path to the folder containing the tiles.
+
+        Returns:
+            bool: True if the tile size is appropriate, False otherwise.
+        """
+        available_memory = psutil.virtual_memory().available
+        tif_files = [f for f in os.listdir(folder_path) if f.endswith('.tif')]
+        tif_sizes = [(f, os.path.getsize(os.path.join(folder_path, f))) for f in tif_files]
+        tif_sizes.sort(key=lambda x: x[1], reverse=True)
+        
+        max_size = 0.045 * available_memory
+        
+        if tif_sizes and tif_sizes[0][1] > max_size:
+            return False
+        
+        if len(tif_sizes) > 1 and (tif_sizes[0][1] + tif_sizes[1][1]) > 120 * 1024 * 1024:
+            return False
+        
+        return True

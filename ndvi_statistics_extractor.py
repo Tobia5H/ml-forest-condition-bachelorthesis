@@ -4,20 +4,17 @@ import rasterio
 import rasterio.mask
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 from image_converter import TifImageConverter
 
 class NDVIAnalyzer:
-    def __init__(self):
+    def __init__(self, output_dir):
         """
         Initializes the NDVIAnalyzer class.
 
-        Attributes:
-            shapefile_path (str): Path to the shapefile containing polygons.
-            ndvi_path (str): Path to the NDVI GeoTIFF image.
-            gdf (geopandas.GeoDataFrame): Geodataframe containing the loaded polygons.
-            ndvi_image (np.ndarray): Array representation of the NDVI image.
-            ndvi_meta (dict): Metadata of the NDVI GeoTIFF image.
+        Args:
+            output_dir (str): Path to the directory where output files will be saved.
         """
         self.logger = LoggerConfig.get_logger(self.__class__.__name__)
         self.tifconverter = TifImageConverter(output_directory='uploads/')
@@ -26,6 +23,7 @@ class NDVIAnalyzer:
         self.gdf = None
         self.ndvi_image = None
         self.ndvi_meta = None
+        self.output_dir = output_dir
 
     def load_shapefile(self):
         """
@@ -59,6 +57,9 @@ class NDVIAnalyzer:
 
         Returns:
             np.ndarray: The masked NDVI image array.
+
+        Raises:
+            ValueError: If the shapefile or NDVI image is not loaded.
         """
         if self.gdf is None or self.ndvi_image is None:
             self.logger.error("Shapefile or NDVI image not loaded.")
@@ -93,8 +94,8 @@ class NDVIAnalyzer:
             'NDVI_mean': np.mean(ndvi_values),
             'NDVI_median': np.median(ndvi_values),
             'NDVI_std': np.std(ndvi_values),
-            'NDVI_min': np.min(ndvi_values),
-            'NDVI_max': np.max(ndvi_values)
+            'NDVI_min': np.min(ndvi_values).item(),
+            'NDVI_max': np.max(ndvi_values).item()
         }
 
         self.logger.info(f"NDVI statistics calculated: {ndvi_stats}")
@@ -102,21 +103,41 @@ class NDVIAnalyzer:
 
     def plot_masked_ndvi(self, masked_ndvi):
         """
-        Plots the masked NDVI image.
+        Plots the masked NDVI image and saves it as a PNG file in the outputs folder.
 
         Args:
             masked_ndvi (np.ndarray): The masked NDVI image array.
         """
         self.logger.info("Plotting masked NDVI image.")
-        masked_array = np.ma.masked_where(masked_ndvi <= 0, masked_ndvi)
-        cmap = plt.cm.gray
-        cmap.set_bad(color='pink')
         
+        # Mask the NDVI array where values are not positive
+        masked_array = np.ma.masked_where(masked_ndvi <= 0, masked_ndvi)
+        
+        # Create a colormap that ranges from dark green to light green
+        cmap = plt.cm.YlGn
+        cmap.set_bad(color='#bbbbbb')  # Set the masked values color to light gray (#bbbbbb)
+        
+        # Define the output file path
+        output_file = os.path.join(self.output_dir, "masked_ndvi.png")
+        
+        # Plot the NDVI image and save it to the specified path
         plt.figure(figsize=(10, 10))
-        plt.imshow(masked_array, cmap=cmap)
+        im = plt.imshow(masked_array, cmap=cmap)
         plt.title('Masked NDVI Image')
-        plt.colorbar(label='NDVI Values')
-        plt.show()
+        cbar = plt.colorbar(im, label='NDVI Values')
+        
+        # Create a custom legend for the "not detected trees" (light gray) and valid NDVI (green) areas
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor='#bbbbbb', edgecolor='black', label='Areas without detected trees (NDVI <= 0)'),
+            Patch(facecolor=cmap(0.75), edgecolor='black', label='Vegetated areas (NDVI > 0)')
+        ]
+        plt.legend(handles=legend_elements, loc='lower right')
+
+        plt.savefig(output_file, format='png')
+        plt.close()  # Close the figure to prevent it from being displayed
+
+        self.logger.info(f"Masked NDVI image saved as {output_file}.")
 
     def calculate(self, shapefile_path, ndvi_path):
         """
@@ -139,5 +160,9 @@ class NDVIAnalyzer:
         masked_ndvi = self.mask_ndvi_image()
         
         # Calculate NDVI statistics
-        return self.calculate_ndvi_statistics(masked_ndvi)
-
+        ndvi_stats = self.calculate_ndvi_statistics(masked_ndvi)
+        
+        # Plot NDVI values and save as png
+        self.plot_masked_ndvi(masked_ndvi)
+        
+        return ndvi_stats

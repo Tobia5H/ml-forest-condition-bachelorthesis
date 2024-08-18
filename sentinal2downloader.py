@@ -1,47 +1,67 @@
-import random
+
 import ee
 import requests
-from datetime import datetime
 from logger_config import LoggerConfig
 
 class Sentinel2Downloader:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(Sentinel2Downloader, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
-        """Initialize the Earth Engine module with service account credentials."""
-        self.logger = LoggerConfig.get_logger(self.__class__.__name__)
-        credentials = ee.ServiceAccountCredentials(
-            'python-script-azure-vm@ee-bachelorthesis-forestml.iam.gserviceaccount.com', 
-            '/home/tobias/detectree2/keys/ee-bachelorthesis-forestml-9f670651e3e4.json'
-        )
-        ee.Initialize(credentials)
-        self.logger.info("Earth Engine initialized with service account credentials.")
+        if not self._initialized:
+            self.logger = LoggerConfig().get_logger(self.__class__.__name__)
+            credentials = ee.ServiceAccountCredentials(
+                'python-script-azure-vm@ee-bachelorthesis-forestml.iam.gserviceaccount.com', 
+                '/home/tobias/detectree2/keys/ee-bachelorthesis-forestml-9f670651e3e4.json'
+            )
+            ee.Initialize(credentials)
+            self.logger.info("Earth Engine initialized with service account credentials.")
+            self._initialized = True
 
     def get_median_image(self, aoi, start_date, end_date):
         """Retrieve the median image from Sentinel-2 collection within the specified date range and AOI.
         
-        :param aoi: Area of interest as an ee.Geometry object.
-        :param start_date: Start date for filtering the image collection (YYYY-MM-DD).
-        :param end_date: End date for filtering the image collection (YYYY-MM-DD).
-        :return: Median image for the specified date range and AOI.
+        Args:
+            aoi (ee.Geometry): Area of interest as an ee.Geometry object.
+            start_date (str): Start date for filtering the image collection (YYYY-MM-DD).
+            end_date (str): End date for filtering the image collection (YYYY-MM-DD).
+        
+        Returns:
+            ee.Image: Median image for the specified date range and AOI.
         """
         self.logger.info(f"Retrieving median image for AOI from {start_date} to {end_date}.")
+        
+        # Filter to ensure images are taken during daylight
+        solar_elevation_filter = ee.Filter.gt('MEAN_SOLAR_ZENITH_ANGLE', 0)  # Ensure daylight by positive solar elevation
+        
         sentinel2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED') \
-                       .filterDate(start_date, end_date) \
-                       .filterBounds(aoi) \
-                       .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))  # Filter to get low-cloud images
+                    .filterDate(start_date, end_date) \
+                    .filterBounds(aoi) \
+                    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)) \
+                    .filter(solar_elevation_filter)  # Filter for daylight images
         
         median_image = sentinel2.median().clip(aoi)
         self.logger.info("Median image retrieved successfully.")
         return median_image
+
     
     def get_rgb_download_url(self, aoi, start_date, end_date, scale=10, crs='EPSG:25833'):
         """Generate a download link for the true color RGB image.
         
-        :param aoi: Area of interest as an ee.Geometry object.
-        :param start_date: Start date for filtering the image collection (YYYY-MM-DD).
-        :param end_date: End date for filtering the image collection (YYYY-MM-DD).
-        :param scale: Spatial resolution of the output image in meters.
-        :param crs: Coordinate Reference System for the output image.
-        :return: URL link to download the RGB image.
+        Args:
+            aoi (ee.Geometry): Area of interest as an ee.Geometry object.
+            start_date (str): Start date for filtering the image collection (YYYY-MM-DD).
+            end_date (str): End date for filtering the image collection (YYYY-MM-DD).
+            scale (int, optional): Spatial resolution of the output image in meters. Default is 10.
+            crs (str, optional): Coordinate Reference System for the output image. Default is 'EPSG:25833'.
+        
+        Returns:
+            str: URL link to download the RGB image.
         """
         self.logger.info("Generating RGB download URL.")
         median_image = self.get_median_image(aoi, start_date, end_date)
@@ -60,12 +80,15 @@ class Sentinel2Downloader:
     def get_ndvi_download_url(self, aoi, start_date, end_date, scale=10, crs='EPSG:25833'):
         """Generate a download link for the NDVI image.
         
-        :param aoi: Area of interest as an ee.Geometry object.
-        :param start_date: Start date for filtering the image collection (YYYY-MM-DD).
-        :param end_date: End date for filtering the image collection (YYYY-MM-DD).
-        :param scale: Spatial resolution of the output image in meters.
-        :param crs: Coordinate Reference System for the output image.
-        :return: URL link to download the NDVI image.
+        Args:
+            aoi (ee.Geometry): Area of interest as an ee.Geometry object.
+            start_date (str): Start date for filtering the image collection (YYYY-MM-DD).
+            end_date (str): End date for filtering the image collection (YYYY-MM-DD).
+            scale (int, optional): Spatial resolution of the output image in meters. Default is 10.
+            crs (str, optional): Coordinate Reference System for the output image. Default is 'EPSG:25833'.
+        
+        Returns:
+            str: URL link to download the NDVI image.
         """
         self.logger.info("Generating NDVI download URL.")
         median_image = self.get_median_image(aoi, start_date, end_date)
@@ -81,60 +104,75 @@ class Sentinel2Downloader:
         self.logger.info(f"NDVI download URL generated: {download_url}")
         return download_url
 
-    def download_nvdi_image(self, longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date):
+    def download_nvdi_image(self, longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs='EPSG:25833'):
         """Download links for NDVI image using the bounding box coordinates.
         
-        :param longitude_min: Minimum longitude (west boundary of the area).
-        :param latitude_min: Minimum latitude (south boundary of the area).
-        :param longitude_max: Maximum longitude (east boundary of the area).
-        :param latitude_max: Maximum latitude (north boundary of the area).
-        :param start_date: Start date for filtering the image collection (YYYY-MM-DD).
-        :param end_date: End date for filtering the image collection (YYYY-MM-DD).
-        :return: File path to the downloaded image.
+        Args:
+            longitude_min (float): Minimum longitude (west boundary of the area).
+            latitude_min (float): Minimum latitude (south boundary of the area).
+            longitude_max (float): Maximum longitude (east boundary of the area).
+            latitude_max (float): Maximum latitude (north boundary of the area).
+            start_date (str): Start date for filtering the image collection (YYYY-MM-DD).
+            end_date (str): End date for filtering the image collection (YYYY-MM-DD).
+            crs (str, optional): Coordinate Reference System for the output image. Default is 'EPSG:25833'.
+        
+        Returns:
+            str: File path to the downloaded image.
         """
         self.logger.info("Downloading NDVI image.")
         aoi = ee.Geometry.Rectangle([longitude_min, latitude_min, longitude_max, latitude_max])
-        ndvi_url = self.get_ndvi_download_url(aoi=aoi, start_date=start_date, end_date=end_date)
+        ndvi_url = self.get_ndvi_download_url(aoi=aoi, start_date=start_date, end_date=end_date, crs=crs)
         return self._get_image_with_request(ndvi_url, "ndvi")
 
-    def download_rgb_image(self, longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date):
+    def download_rgb_image(self, longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs='EPSG:25833'):
         """Download links for RGB image using the bounding box coordinates.
         
-        :param longitude_min: Minimum longitude (west boundary of the area).
-        :param latitude_min: Minimum latitude (south boundary of the area).
-        :param longitude_max: Maximum longitude (east boundary of the area).
-        :param latitude_max: Maximum latitude (north boundary of the area).
-        :param start_date: Start date for filtering the image collection (YYYY-MM-DD).
-        :param end_date: End date for filtering the image collection (YYYY-MM-DD).
-        :return: File path to the downloaded image.
+        Args:
+            longitude_min (float): Minimum longitude (west boundary of the area).
+            latitude_min (float): Minimum latitude (south boundary of the area).
+            longitude_max (float): Maximum longitude (east boundary of the area).
+            latitude_max (float): Maximum latitude (north boundary of the area).
+            start_date (str): Start date for filtering the image collection (YYYY-MM-DD).
+            end_date (str): End date for filtering the image collection (YYYY-MM-DD).
+            crs (str, optional): Coordinate Reference System for the output image. Default is 'EPSG:25833'.
+        
+        Returns:
+            str: File path to the downloaded image.
         """
         self.logger.info("Downloading RGB image.")
         aoi = ee.Geometry.Rectangle([longitude_min, latitude_min, longitude_max, latitude_max])
-        rgb_url = self.get_rgb_download_url(aoi=aoi, start_date=start_date, end_date=end_date)
+        rgb_url = self.get_rgb_download_url(aoi=aoi, start_date=start_date, end_date=end_date, crs=crs)
         return self._get_image_with_request(rgb_url, "rgb")
             
-    def download_rgb_nvdi_image(self, longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date):
+    def download_rgb_nvdi_image(self, longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs='EPSG:25833'):
         """Download links for both RGB and NDVI images using the bounding box coordinates.
         
-        :param longitude_min: Minimum longitude (west boundary of the area).
-        :param latitude_min: Minimum latitude (south boundary of the area).
-        :param longitude_max: Maximum longitude (east boundary of the area).
-        :param latitude_max: Maximum latitude (north boundary of the area).
-        :param start_date: Start date for filtering the image collection (YYYY-MM-DD).
-        :param end_date: End date for filtering the image collection (YYYY-MM-DD).
-        :return: File path to the downloaded images.
+        Args:
+            longitude_min (float): Minimum longitude (west boundary of the area).
+            latitude_min (float): Minimum latitude (south boundary of the area).
+            longitude_max (float): Maximum longitude (east boundary of the area).
+            latitude_max (float): Maximum latitude (north boundary of the area).
+            start_date (str): Start date for filtering the image collection (YYYY-MM-DD).
+            end_date (str): End date for filtering the image collection (YYYY-MM-DD).
+            crs (str, optional): Coordinate Reference System for the output image. Default is 'EPSG:25833'.
+        
+        Returns:
+            list: List of file paths to the downloaded images (RGB and NDVI).
         """
         self.logger.info("Downloading both RGB and NDVI images.")
-        nvdi_path = self.download_nvdi_image(longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date)
-        rgb_path = self.download_rgb_image(longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date)
+        nvdi_path = self.download_nvdi_image(longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs)
+        rgb_path = self.download_rgb_image(longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs)
         return [rgb_path, nvdi_path]
             
     def _get_image_with_request(self, url, output_filename):
         """Helper method to download an image from a URL.
         
-        :param url: The download URL for the image.
-        :param output_filename: The output filename to save the image.
-        :return: The path to the downloaded image file.
+        Args:
+            url (str): The download URL for the image.
+            output_filename (str): The output filename to save the image.
+        
+        Returns:
+            str: The path to the downloaded image file, or None if the download failed.
         """
         output_filename = f"uploads/{output_filename}.tif"
         self.logger.info(f"Downloading image from {url} to {output_filename}.")

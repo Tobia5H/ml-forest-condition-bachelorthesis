@@ -27,7 +27,7 @@ class TifImageConverter:
 
     def convert(self, input_file):
         """
-        Convert the GeoTIFF file to the specified format, adjusting bit depth as needed.
+        Converts the GeoTIFF file to the specified format, adjusting bit depth as needed.
         The output file will have the same base name as the input file but with the new extension.
 
         Args:
@@ -60,7 +60,7 @@ class TifImageConverter:
     
     def convert_to_uint8(self, input_file, png_conversion=False):
         """
-        Convert the GeoTIFF file to 8-bit format, adjusting bit depth if necessary.
+        Converts the GeoTIFF file to 8-bit format, adjusting bit depth if necessary.
 
         Args:
             input_file (str): The path to the input GeoTIFF file.
@@ -86,7 +86,6 @@ class TifImageConverter:
             # Handle different bit depths
             if 'uint8' in bit_depth:
                 self.logger.info("Image is already in 8-bit format, no scaling needed.")
-                pass
             elif 'uint16' in bit_depth:
                 self.logger.info("Scaling 16-bit image data to 8-bit.")
                 image_data = np.clip(image_data / 256, 0, 255).astype(np.uint8)

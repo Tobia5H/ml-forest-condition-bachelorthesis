@@ -60,7 +60,8 @@ class GeoImageProcessor:
         Retrieves the corner coordinates of the image in the source projection.
 
         Returns:
-            tuple: A tuple containing four corners of the image in the source projection.
+            tuple: A tuple containing four corners of the image in the source projection, 
+                   formatted as ((minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)).
         """
         self.logger.info("Calculating corner coordinates.")
         minx = self.geotransform[0]
@@ -88,7 +89,8 @@ class GeoImageProcessor:
 
     def process_image(self, image_path):
         """
-        Processes the image by loading it, extracting corner coordinates, and converting them to latitude and longitude.
+        Processes the image by loading it, extracting corner coordinates, 
+        and converting them to latitude and longitude.
 
         Args:
             image_path (str): The file path to the image.

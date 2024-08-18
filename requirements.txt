@@ -23,6 +23,7 @@ command-not-found==0.3
 contourpy==1.2.1
 cryptography==3.4.8
 cycler==0.12.1
+dataclasses-json==0.6.7
 dbus-python==1.2.18
 decorator==5.1.1
 descartes==1.1.0
@@ -38,6 +39,7 @@ filelock==3.15.4
 fiona==1.9.6
 Flask==3.0.3
 Flask-SocketIO==5.3.6
+Flask-Toastr==0.5.8
 folium==0.17.0
 fonttools==4.53.1
 fsspec==2024.6.1
@@ -47,7 +49,6 @@ GDAL==3.6.4
 geedim==1.8.0
 geemap==0.33.1
 geocoder==1.38.1
-geojson==3.1.0
 geopandas==1.0.1
 geos==0.2.3
 google-api-core==2.19.1
@@ -86,6 +87,7 @@ lazr.uri==1.0.6
 lxml==5.2.2
 Markdown==3.6
 MarkupSafe==2.1.5
+marshmallow==3.21.3
 matplotlib==3.9.1
 matplotlib-inline==0.1.7
 more-itertools==8.10.0
@@ -122,6 +124,7 @@ proj==0.2.0
 prompt_toolkit==3.0.47
 proto-plus==1.24.0
 protobuf==4.25.3
+psutil==6.0.0
 ptyprocess==0.7.0
 pure_eval==0.2.3
 pyasn1==0.6.0
@@ -167,6 +170,7 @@ tenacity==9.0.0
 tensorboard==2.17.0
 tensorboard-data-server==0.7.2
 termcolor==2.4.0
+tifffile==2024.7.24
 tomli==2.0.1
 torch==2.3.1
 torchaudio==2.3.1
@@ -176,6 +180,7 @@ traitlets==5.14.3
 traittypes==0.2.1
 triton==2.3.1
 types-python-dateutil==2.9.0.20240316
+typing-inspect==0.9.0
 typing_extensions==4.12.2
 tzdata==2024.1
 ubuntu-advantage-tools==8001

@@ -11,6 +11,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-editable/1.2.0/Leaflet.Editable.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.1/proj4leaflet.js"></script>
 </head>
 <body>
     <div id="sidebar">
@@ -53,15 +55,22 @@
 
         <div id="map-container">
             <div id="map"></div>
-            <div id="download-area-container">
-                <!--Size selection here-->
-            </div>
+        </div>
+        <div id="map-date-picker">
+            <label for="start-date">Start Date:</label>
+            <input type="date" id="start-date" name="start-date" required>
+            <label for="end-date">End Date:</label>
+            <input type="date" id="end-date" name="end-date" required>
         </div>
         <div class="images">
             <div class="image-container">
                 <img id="input_image" src="" alt="Input Image" style="display:none;"/>
                 <div class="spinner" id="loading-spinner-input" style="display:none;"></div>
                 <input type="file" accept="image/*" required="" id="file-input">
+                <div id="image-date-picker">
+                    <label for="image-date">Image Date:</label>
+                    <input type="date" id="image-date" name="image-date" required>
+                </div>
             </div>
             <div class="image-container">
                 <img id="output_image" src="" alt="Output Image" style="display:none;"/>
@@ -81,6 +90,17 @@
                 </span>
                 <span class="button-text">Analyze Area</span>
             </button>
+        </div>
+        <div id="ndvi-values">
+            <div class="image-container">
+                <img id="ndvi_image" src="" alt="NDVI Image"/>
+            </div>
+            <table id='ndvi-table'>
+                <tr>
+                    <th>Title</th>
+                    <th>Value</th>
+                </tr>
+            </table>
         </div>
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
