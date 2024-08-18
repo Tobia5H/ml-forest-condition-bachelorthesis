@@ -92,12 +92,12 @@ class Detectree2:
         buffer = int(self.settings['tiling']['buffer'])
         tile_width = int(self.settings['tiling']['tile_width'])
         tile_height = int(self.settings['tiling']['tile_height'])
-        
+
         self.logger.info("Tiling the data.")
         tile_data(data, tiles_path, buffer, tile_width, tile_height, dtype_bool=True)
 
         cfg = self.load_model(model_path)
-        
+
         if self._check_tile_size(tiles_path):
             self.logger.info("Predicting on the tiled data.")
             predict_on_data(tiles_path, predictor=DefaultPredictor(cfg))
@@ -106,7 +106,7 @@ class Detectree2:
 
         project_to_geojson(tiles_path, tiles_path + "predictions/", tiles_path + "predictions_geo/")
         self.logger.info("Stitching and cleaning crowns.")
-        
+
         crown_confidence = float(self.settings['crown']['confidence'])
         crowns = stitch_crowns(tiles_path + "predictions_geo/", 1)
         clean = clean_crowns(crowns, 0.6, crown_confidence)
@@ -182,7 +182,7 @@ class Detectree2:
         plt.close()
 
         img = Image.open(buf)
-        
+
         # Limit the width to a maximum of 2500 pixels while maintaining the aspect ratio
         max_width = 2500
         if img.width > max_width:
@@ -207,13 +207,13 @@ class Detectree2:
         tif_files = [f for f in os.listdir(folder_path) if f.endswith('.tif')]
         tif_sizes = [(f, os.path.getsize(os.path.join(folder_path, f))) for f in tif_files]
         tif_sizes.sort(key=lambda x: x[1], reverse=True)
-        
-        max_size = 0.045 * available_memory
-        
+
+        max_size = 0.06 * available_memory
+
         if tif_sizes and tif_sizes[0][1] > max_size:
             return False
-        
-        if len(tif_sizes) > 1 and (tif_sizes[0][1] + tif_sizes[1][1]) > 120 * 1024 * 1024:
+
+        if len(tif_sizes) > 1 and (tif_sizes[0][1] + tif_sizes[1][1]) > 180 * 1024 * 1024:
             return False
-        
+
         return True
