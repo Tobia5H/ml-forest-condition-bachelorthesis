@@ -17,7 +17,7 @@ class Sentinel2Downloader:
             self.logger = LoggerConfig().get_logger(self.__class__.__name__)
             credentials = ee.ServiceAccountCredentials(
                 'python-script-azure-vm@ee-bachelorthesis-forestml.iam.gserviceaccount.com', 
-                '/keys/ee-bachelorthesis-forestml-9f670651e3e4.json'
+                'keys/ee-bachelorthesis-forestml-9f670651e3e4.json'
             )
             ee.Initialize(credentials)
             self.logger.info("Earth Engine initialized with service account credentials.")
