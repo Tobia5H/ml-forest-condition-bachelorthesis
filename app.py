@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_from_directory, jsonify
+from flask import Flask, render_template, request, send_from_directory, jsonify, url_for
 from pathlib import Path
 from werkzeug.utils import secure_filename
 import os
@@ -86,18 +86,18 @@ class FlaskAppWrapper:
             self.logger.info("Handling file upload.")
             try:
                 self._clean_folder_structure()
-                
+
                 if 'file' not in request.files or 'input_date' not in request.form:
                     self.logger.warning("File or input date missing in the request.")
                     return jsonify({"status": "error", "message": "File or input date missing in the request."}), 400
-                
+
                 file = request.files['file']
                 input_date_str = request.form['input_date']
-                
+
                 if file.filename == '':
                     self.logger.warning("No file selected for uploading.")
                     return jsonify({"status": "error", "message": "No file selected for uploading."}), 400
-                
+
                 if file and self._allowed_file(file.filename):
                     # Parse the input date
                     try:
@@ -105,20 +105,20 @@ class FlaskAppWrapper:
                     except ValueError:
                         self.logger.warning("Invalid input date format.")
                         return jsonify({"status": "error", "message": "Invalid input date format. Expected YYYY-MM-DD."}), 400
-                    
+
                     # Calculate start and end dates (one month before and after the input date)
                     start_date = (input_date - timedelta(days=30)).strftime('%Y-%m-%d')
                     end_date = (input_date + timedelta(days=30)).strftime('%Y-%m-%d')
-                    
+
                     filename = secure_filename(file.filename)
                     file_path = os.path.join(self.app.config['UPLOAD_FOLDER'], filename)
                     file.save(file_path)
                     self.logger.info(f"File uploaded and saved to {file_path}.")
                     crs = self._get_image_crs(file_path)
-                    
+
                     picture_corner_lat_lng = self.geoidentifier.process_image(file_path)
                     nvdi_path = self.s2Downloader.download_nvdi_image(
-                        picture_corner_lat_lng[0][1], 
+                        picture_corner_lat_lng[0][1],
                         picture_corner_lat_lng[0][0],
                         picture_corner_lat_lng[2][1],
                         picture_corner_lat_lng[2][0],
@@ -127,15 +127,15 @@ class FlaskAppWrapper:
                         crs
                     )
                     self.logger.info(f"NDVI image downloaded to {nvdi_path}.")
-                    
+
                     display_path = self.tifpngconverter.convert(file_path)
                     self.logger.info(f"Image converted for display at {display_path}.")
-                    
+
                     return jsonify({'filepath': file_path, 'displaypath': str(display_path)})
                 else:
                     self.logger.warning("Invalid file format.")
                     return jsonify({"status": "error", "message": "Invalid file format."}), 400
-            
+
             except Exception as e:
                 self.logger.error(f"Error during file upload: {str(e)}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -154,24 +154,29 @@ class FlaskAppWrapper:
                 data = request.json
                 image_path = Path(data['image_path'])
                 model_path = Path(data['model_path'])
-                
+
                 if os.path.exists(self.TILES_FOLDER):
                     shutil.rmtree(self.TILES_FOLDER)
                 os.makedirs(self.TILES_FOLDER, exist_ok=True)
-                
+
                 image_path = self.tifpngconverter.convert_to_uint8(image_path)
                 output_img = self.dt2.evaluate_image(image_path, model_path)
-                
+
                 output_img_path = os.path.join(self.app.config['OUTPUT_FOLDER'], 'output.png')
                 output_img.save(output_img_path)
                 self.logger.info(f"Image evaluation complete, output saved to {output_img_path}.")
-                
+
+                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                output_img_url = url_for('output_file', filename='output.png', v=timestamp)
+
                 ndvi_stats = self.ndvianalyzer.calculate(self.OUTPUT_FOLDER + "crowns_out.gpkg", self.UPLOAD_FOLDER + "ndvi.tif")
                 ndvi_masked_path = os.path.join(self.OUTPUT_FOLDER, "masked_ndvi.png")
+                ndvi_masked_url = url_for('output_file', filename="masked_ndvi.png", v=timestamp)
+
                 self.logger.info("NDVI statistics calculated and image plotted.")
-                
-                return jsonify({'input_image': str(image_path), 'output_image': output_img_path, 'ndvi_stats': ndvi_stats, 'ndvi_image': ndvi_masked_path})
-            
+
+                return jsonify({'input_image': str(image_path), 'output_image': output_img_url, 'ndvi_stats': ndvi_stats, 'ndvi_image': ndvi_masked_url})
+
             except Exception as e:
                 self.logger.error(f"Error during image evaluation: {str(e)}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -192,13 +197,13 @@ class FlaskAppWrapper:
                 data = rasterio.open(file_path)
                 tile_width = int(self.settings["tiling"]["tile_width"])
                 tile_height = int(self.settings["tiling"]["tile_height"])
-                
+
                 total_tiles = int(
                     ((data.bounds[2] - data.bounds[0]) / tile_width) * ((data.bounds[3] - data.bounds[1]) / tile_height))
-                
+
                 self.logger.info(f"Total tiles calculated: {total_tiles}")
                 return jsonify({'total_tiles': total_tiles})
-            
+
             except Exception as e:
                 self.logger.error(f"Error during tile calculation: {str(e)}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -219,7 +224,7 @@ class FlaskAppWrapper:
                 end_date = data.get('end_date', '2023-01-31')
                 coordinates = data['coordinates']
                 file_paths = self.s2Downloader.download_rgb_nvdi_image(
-                    coordinates[0][1], 
+                    coordinates[0][1],
                     coordinates[0][0],
                     coordinates[2][1],
                     coordinates[2][0],
@@ -227,10 +232,14 @@ class FlaskAppWrapper:
                     end_date
                 )
                 display_path = self.tifpngconverter.convert(file_paths[0])
+
+                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                display_url = url_for('display_file', filename=os.path.basename(display_path), v=timestamp)
+
                 self.logger.info(f"Image downloaded and converted for display at {display_path}.")
-                
-                return jsonify({'filepath': file_paths[0], 'displaypath': display_path})
-            
+
+                return jsonify({'filepath': file_paths[0], 'displaypath': display_url})
+
             except Exception as e:
                 self.logger.error(f"Error during image download: {str(e)}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -281,16 +290,16 @@ class FlaskAppWrapper:
                 new_settings = request.json
                 self.settings['tiling'].update(new_settings.get('tiling', {}))
                 self.settings['crown'].update(new_settings.get('crown', {}))
-                
+
                 self.dt2.settings = self.settings
                 self.logger.info("Settings updated successfully.")
 
                 return jsonify({'status': 'success'})
-            
+
             except Exception as e:
                 self.logger.error(f"Error during settings update: {str(e)}")
                 return jsonify({"status": "error", "message": str(e)}), 500
-            
+
     def _get_image_crs(self, file_path):
         """
         Retrieves the Coordinate Reference System (CRS) of the image.
@@ -334,14 +343,13 @@ class FlaskAppWrapper:
         """
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS
 
-    def run(self):
+    def prepare(self):
         """
         Starts the Flask application.
         """
         self.logger.info("Starting the Flask application.")
         self._clean_folder_structure()
-        self.app.run()
 
-if __name__ == '__main__':
-    app = FlaskAppWrapper()
-    app.run()
+app_wrapper = FlaskAppWrapper()
+app = app_wrapper.app
+app_wrapper.prepare()
