@@ -11,7 +11,7 @@ class LoggerConfig:
         return cls._instance
 
     @staticmethod
-    def get_logger(name, level=logging.INFO, log_to_file=False):
+    def get_logger(name, level=logging.INFO, log_to_file=True):
         """
         Returns a logger with the central configuration.
 
