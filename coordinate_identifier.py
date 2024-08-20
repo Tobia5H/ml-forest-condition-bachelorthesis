@@ -104,14 +104,4 @@ class GeoImageProcessor:
         corners = self.get_corners()
         converted_corners = [self.convert_to_latlon(corner[0], corner[1]) for corner in corners]
         
-        self.logger.info("Projection information:")
-        self.logger.info(self.projection)
-        self.logger.info("Geotransform:")
-        self.logger.info(self.geotransform)
-        self.logger.info("Coordinates of the corners (lat, lon):")
-        self.logger.info(f"Bottom-left: {converted_corners[0]}")
-        self.logger.info(f"Bottom-right: {converted_corners[1]}")
-        self.logger.info(f"Top-right: {converted_corners[2]}")
-        self.logger.info(f"Top-left: {converted_corners[3]}")
-        
         return converted_corners
