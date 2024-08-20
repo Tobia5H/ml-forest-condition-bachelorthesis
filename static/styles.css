@@ -397,36 +397,58 @@ button:hover .button-text {
 	line-height: 1.2;
 }
 
-#ndvi-values {
+.vi-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	position: relative;
+	width: 60%;
+	margin: auto;
+}
+
+.vi-values {
 	display: none;
-	justify-content: space-between;
-	margin: 20px auto;
-	width: 90%;
-	max-width: 1000px;
+    margin: 20px auto;
+    width: 90%;
+    max-width: 1000px;
 }
 
-#ndvi-values img {
-	max-width: 60%;
-	border: 1px solid #ddd;
+.vi-values h3 {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-table {
-	border-collapse: collapse;
-	margin: 20px 0;
-	max-width: 200px;
+.vi-values-content {
+    display: flex;
+    align-items: center;
 }
 
-th, td {
-	border: 1px solid #008000;
-	padding: 8px;
+.vi-values img {
+    width: 60%;
+    border: 1px solid #ddd;
+	border-radius: 10px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-th {
-	text-align: left;
-	background-color: #00800080;
-	border-radius: 5px;
+.vi-table {
+    border-collapse: collapse;
+    margin: 0 20px;
+    width: 350px;
+	border-radius: 10px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-td:last-child {
-	text-align: right;
+.vi-table th, .vi-table td {
+    border: 1px solid #008000;
+    padding: 8px;
+}
+
+.vi-table th {
+    text-align: left;
+    background-color: #00800080;
+    border-radius: 5px;
+}
+
+.vi-table td:last-child {
+    text-align: right;
 }

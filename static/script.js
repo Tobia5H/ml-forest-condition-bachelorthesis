@@ -258,11 +258,22 @@ $('#analyze').click(function() {
 function startAnalysis() {
     const imagePath = $('#input_image').data('filepath');
     const modelPath = "urban_trees_Cambridge_20230630.pth"; // Update this to your actual model path
-    const table = document.getElementById('ndvi-table');
+
+    const ndviTable = document.getElementById('ndvi-table');
+    const eviTable = document.getElementById('evi-table');
+    const gndviTable = document.getElementById('gndvi-table');
+    const cigreenTable = document.getElementById('cigreen-table');
+    const ciredgeTable = document.getElementById('cired-edge-table');
+    const combinedTable = document.getElementById('combined-table');
 
     $('#loading-spinner-output').show();
     $('#output_image').hide();
     $('#ndvi-values').hide();
+    $('#evi-values').hide();
+    $('#gndvi-values').hide();
+    $('#cigreen-values').hide();
+    $('#cired-edge-values').hide();
+    $('#combined-values').hide();
     $('#error-message-ouput').hide();
 
     showToast("info", "Analyzation started", "Please wait while image is being analyzed. This might take a while depending on your image size.");
@@ -275,20 +286,40 @@ function startAnalysis() {
         success: function(data) {
             console.log(data);
             $('#output_image').attr('src', data.output_image);
-            $('#ndvi_image').attr('src', data.ndvi_image);
 
-            // Insert NDVI stats into the table
-            for (const [key, value] of Object.entries(data.ndvi_stats)) {
-                const row = table.insertRow();
-                const cell1 = row.insertCell(0);
-                const cell2 = row.insertCell(1);
-                cell1.innerText = key;
-                cell2.innerText = value;
-            }
+            // NDVI
+            $('#ndvi_image').attr('src', data.vi_images.ndvi);
+            insertStatsIntoTable(ndviTable, data.vi_stats.ndvi);
+
+            // EVI
+            $('#evi_image').attr('src', data.vi_images.evi);
+            insertStatsIntoTable(eviTable, data.vi_stats.evi);
+
+            // GNDVI
+            $('#gndvi_image').attr('src', data.vi_images.gndvi);
+            insertStatsIntoTable(gndviTable, data.vi_stats.gndvi);
+
+            // Chlorophyll Index Green
+            $('#cigreen_image').attr('src', data.vi_images.cigreen);
+            insertStatsIntoTable(cigreenTable, data.vi_stats.cigreen);
+
+            // Chlorophyll Index Red-Edge
+            $('#cired-edge_image').attr('src', data.vi_images['cired-edge']);
+            insertStatsIntoTable(ciredgeTable, data.vi_stats['cired-edge']);
+
+            // Combined Index
+            $('#combined_image').attr('src', data.vi_images.combined);
+            insertStatsIntoTable(combinedTable, data.vi_stats.combined);
 
             $('#output_image').show();
             $('#ndvi-values').css('display', 'flex').show();
+            $('#evi-values').css('display', 'flex').show();
+            $('#gndvi-values').css('display', 'flex').show();
+            $('#cigreen-values').css('display', 'flex').show();
+            $('#cired-edge-values').css('display', 'flex').show();
+            $('#combined-values').css('display', 'flex').show();
             $('#loading-spinner-output').hide();
+
             showToast("success", "Image successfully analyzed!", "Image has been successfully analyzed. All detected trees have been marked red in the output image.");
         },
         error: function(error) {
@@ -298,8 +329,55 @@ function startAnalysis() {
     });
 }
 
-// Saves user settings for tiling and crown confidence
+function insertStatsIntoTable(table, stats) {
+    table.innerHTML = ""; // Clear the table before inserting new rows
+    const headerRow = table.insertRow();
+    const headerCell1 = headerRow.insertCell(0);
+    const headerCell2 = headerRow.insertCell(1);
+    headerCell1.innerText = "Title";
+    headerCell2.innerText = "Value";
+    for (const [key, value] of Object.entries(stats)) {
+        const row = table.insertRow();
+        const cell1 = row.insertCell(0);
+        const cell2 = row.insertCell(1);
+        cell1.innerText = key;
+        cell2.innerText = value;
+    }
+}
+
+
+function insertStatsIntoTable(table, stats) {
+    table.innerHTML = ""; // Clear the table before inserting new rows
+    const headerRow = table.insertRow();
+    const headerCell1 = headerRow.insertCell(0);
+    const headerCell2 = headerRow.insertCell(1);
+    headerCell1.innerText = "Title";
+    headerCell2.innerText = "Value";
+    for (const [key, value] of Object.entries(stats)) {
+        const row = table.insertRow();
+        const cell1 = row.insertCell(0);
+        const cell2 = row.insertCell(1);
+        cell1.innerText = key;
+        cell2.innerText = value;
+    }
+}
+
+
+// Saves user settings for tiling, crown confidence, and VI weights
 $('#save_settings').click(function() {
+    const ndviWeight = parseFloat($('#ndvi_weight').val());
+    const eviWeight = parseFloat($('#evi_weight').val());
+    const gndviWeight = parseFloat($('#gndvi_weight').val());
+    const cigreenWeight = parseFloat($('#cigreen_weight').val());
+    const ciredgeWeight = parseFloat($('#ciredge_weight').val());
+
+    const totalWeight = ndviWeight + eviWeight + gndviWeight + cigreenWeight + ciredgeWeight;
+
+    if (totalWeight !== 1) {
+        showToast("error", "Weighting Error", "The sum of the weights must equal 1. Please adjust the weights.");
+        return;
+    }
+
     const settings = {
         tiling: {
             buffer: $('#buffer').val(),
@@ -308,6 +386,13 @@ $('#save_settings').click(function() {
         },
         crown: {
             confidence: $('#confidence').val()
+        },
+        vi_weights: {
+            ndvi: ndviWeight,
+            evi: eviWeight,
+            gndvi: gndviWeight,
+            cigreen: cigreenWeight,
+            ciredge: ciredgeWeight
         }
     };
 
@@ -324,6 +409,7 @@ $('#save_settings').click(function() {
         }
     });
 });
+
 
 // Handles the download of the selected area image
 $('#download-image-interactive').click(function() {
