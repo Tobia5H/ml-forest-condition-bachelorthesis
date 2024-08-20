@@ -30,24 +30,6 @@ class Detectree2:
             self.logger.info(f"Detectree2 initialized with settings: {settings}")
             self._initialized = True
 
-    def convert_to_tif(self, image_path):
-        """
-        Converts an image to TIFF format.
-
-        Args:
-            image_path (Path): The path to the image to be converted.
-
-        Returns:
-            Path: The path to the converted TIFF image.
-        """
-        self.logger.info(f"Converting image {image_path} to TIFF format.")
-        img = Image.open(image_path)
-        img = img.convert("RGB")
-        tif_path = image_path.with_suffix('.tif')
-        img.save(tif_path, format='TIFF')
-        self.logger.info(f"Image saved as {tif_path}")
-        return tif_path
-
     def load_model(self, model_path):
         """
         Loads the model configuration.
@@ -109,12 +91,15 @@ class Detectree2:
 
         crown_confidence = float(self.settings['crown']['confidence'])
         crowns = stitch_crowns(tiles_path + "predictions_geo/", 1)
-        clean = clean_crowns(crowns, 0.6, crown_confidence)
-        clean = clean[clean["Confidence_score"] > float(self.settings['crown']['confidence'])]
-        clean = clean.set_geometry(clean.simplify(0.3))
-        clean.to_file(site_path + "/crowns_out.gpkg")
-
-        predictions_img = self.overlay_image_with_gpkg(image_path, site_path + "/crowns_out.gpkg")
+        if not crowns.empty:
+            clean = clean_crowns(crowns, 0.6, crown_confidence)
+            clean = clean[clean["Confidence_score"] > float(self.settings['crown']['confidence'])]
+            clean = clean.set_geometry(clean.simplify(0.3))
+            clean.to_file(site_path + "/crowns_out.gpkg")
+            predictions_img = self.overlay_image_with_gpkg(image_path, site_path + "/crowns_out.gpkg")
+        else:
+            raise ValueError("No tree crowns were detected in the image.")
+        
         self.logger.info("Image evaluation completed.")
         return predictions_img
 
