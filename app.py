@@ -10,7 +10,7 @@ from detectree2_wrapper import Detectree2
 from coordinate_identifier import GeoImageProcessor
 from sentinal2downloader import Sentinel2Downloader
 from image_converter import TifImageConverter
-from ndvi_statistics_extractor import NDVIAnalyzer
+from vi_statistics_extractor import VIAnalyzer
 from logger_config import LoggerConfig
 
 
@@ -37,7 +37,7 @@ class FlaskAppWrapper:
         self.app.config['DISPLAY_FOLDER'] = self.DISPLAY_FOLDER
         self.app.config['TILES_FOLDER'] = self.TILES_FOLDER
 
-        # Define settings for Detectree2
+        # Define settings for Detectree2 and calculation of tree health
         self.settings = {
             "main": {
                 "site_path": self.OUTPUT_FOLDER,
@@ -50,15 +50,23 @@ class FlaskAppWrapper:
             },
             "crown": {
                 "confidence": 0.6
+            },
+            "vi_weights": {
+                "ndvi": 0.2,
+                "evi": 0.2,
+                "gndvi": 0.2,
+                "cigreen": 0.2,
+                "ciredge": 0.2
             }
         }
+
 
         # Initialize various processors and analysis tools
         self.geoidentifier = GeoImageProcessor()
         self.dt2 = Detectree2(settings=self.settings)
         self.s2Downloader = Sentinel2Downloader()
         self.tifpngconverter = TifImageConverter(output_directory=self.DISPLAY_FOLDER)
-        self.ndvianalyzer = NDVIAnalyzer(output_dir=self.OUTPUT_FOLDER)
+        self.vianalyzer = VIAnalyzer(output_dir=self.OUTPUT_FOLDER)
 
         # Set up routes
         self._setup_routes()
@@ -127,6 +135,54 @@ class FlaskAppWrapper:
                         crs
                     )
                     self.logger.info(f"NDVI image downloaded to {nvdi_path}.")
+                    
+                    evi_path = self.s2Downloader.download_evi_image(
+                        picture_corner_lat_lng[0][1],
+                        picture_corner_lat_lng[0][0],
+                        picture_corner_lat_lng[2][1],
+                        picture_corner_lat_lng[2][0],
+                        start_date,
+                        end_date,
+                        crs
+                    )
+                    self.logger.info(f"EVI image downloaded to {evi_path}.")
+                    
+                    gndvi_path = self.s2Downloader.download_gndvi_image(
+                        picture_corner_lat_lng[0][1],
+                        picture_corner_lat_lng[0][0],
+                        picture_corner_lat_lng[2][1],
+                        picture_corner_lat_lng[2][0],
+                        start_date,
+                        end_date,
+                        crs
+                    )
+                    self.logger.info(f"GNDVI image downloaded to {gndvi_path}.")
+
+                    ci_green_path = self.s2Downloader.download_chlorophyll_index_image(
+                        picture_corner_lat_lng[0][1],
+                        picture_corner_lat_lng[0][0],
+                        picture_corner_lat_lng[2][1],
+                        picture_corner_lat_lng[2][0],
+                        start_date,
+                        end_date,
+                        crs,
+                        index_type='green'
+                    )
+                    self.logger.info(f"Chlorophyll Index (green) image downloaded to {ci_green_path}.")
+                    
+                    ci_red_edge_path = self.s2Downloader.download_chlorophyll_index_image(
+                        picture_corner_lat_lng[0][1],
+                        picture_corner_lat_lng[0][0],
+                        picture_corner_lat_lng[2][1],
+                        picture_corner_lat_lng[2][0],
+                        start_date,
+                        end_date,
+                        crs,
+                        index_type='red-edge'
+                    )
+                    self.logger.info(f"Chlorophyll Index (red-edge) image downloaded to {ci_red_edge_path}.")
+
+
 
                     display_path = self.tifpngconverter.convert(file_path)
                     self.logger.info(f"Image converted for display at {display_path}.")
@@ -169,13 +225,46 @@ class FlaskAppWrapper:
                 timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
                 output_img_url = url_for('output_file', filename='output.png', v=timestamp)
 
-                ndvi_stats = self.ndvianalyzer.calculate(self.OUTPUT_FOLDER + "crowns_out.gpkg", self.UPLOAD_FOLDER + "ndvi.tif")
-                ndvi_masked_path = os.path.join(self.OUTPUT_FOLDER, "masked_ndvi.png")
-                ndvi_masked_url = url_for('output_file', filename="masked_ndvi.png", v=timestamp)
+                vi_files = {
+                    'ndvi': "ndvi.tif",
+                    'evi': "evi.tif",
+                    'gndvi': "gndvi.tif",
+                    'cigreen': "chlorophyll_green.tif",
+                    'cired-edge': "chlorophyll_red-edge.tif"
+                }
 
-                self.logger.info("NDVI statistics calculated and image plotted.")
+                vi_stats = {}
+                vi_urls = {}
+                vi_masks = {}
 
-                return jsonify({'input_image': str(image_path), 'output_image': output_img_url, 'ndvi_stats': ndvi_stats, 'ndvi_image': ndvi_masked_url})
+                for vi_name, filename in vi_files.items():
+                    vi_stats[vi_name], vi_masks[vi_name] = self.vianalyzer.calculate(
+                        self.OUTPUT_FOLDER + "crowns_out.gpkg", 
+                        self.UPLOAD_FOLDER + filename,
+                        vi_name
+                    )
+                    
+                    vi_urls[vi_name] = url_for('output_file', filename=f"masked_{vi_name}.png", v=timestamp)
+                    
+                combined_mask = self.vianalyzer.combine_vi_masks(vi_masks, self.settings.get("vi_weights", {}))
+                combined_stats = self.vianalyzer.calculate_vi_statistics(combined_mask)
+                self.vianalyzer.plot_masked_vi(combined_mask, 'combined')
+                
+
+                vi_urls['combined'] = url_for('output_file', filename=f"masked_combined.png", v=timestamp)
+                vi_stats['combined'] = combined_stats
+                               
+                end_time = time.time()
+                print(f"Laufzeit: {end_time - start_time:.6f} Sekunden")
+                self.logger.info("VI statistics calculated and images created.")
+
+                return jsonify({
+                    'input_image': str(image_path),
+                    'output_image': output_img_url,
+                    'vi_stats': vi_stats,
+                    'vi_images': vi_urls
+                })
+
 
             except Exception as e:
                 self.logger.error(f"Error during image evaluation: {str(e)}")
@@ -290,6 +379,9 @@ class FlaskAppWrapper:
                 new_settings = request.json
                 self.settings['tiling'].update(new_settings.get('tiling', {}))
                 self.settings['crown'].update(new_settings.get('crown', {}))
+
+                if 'vi_weights' in new_settings:
+                    self.settings['vi_weights'] = new_settings['vi_weights']
 
                 self.dt2.settings = self.settings
                 self.logger.info("Settings updated successfully.")
