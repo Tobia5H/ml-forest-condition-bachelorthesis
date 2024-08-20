@@ -3,6 +3,8 @@ import geopandas as gpd
 import rasterio
 import rasterio.mask
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import os
