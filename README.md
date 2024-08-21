@@ -64,7 +64,6 @@ This repository contains the programming project for the Bachelor's thesis title
 ### TODO:
 
 - **Dynamic CRS**: Implement support for dynamic coordinate reference systems (CRS) for downloaded images from the interactive map.
-- **Health Showcase**: Add a feature to evaluate forest health based on NDVI values. For example, a mean NDVI of 245 (on a scale of 0-255) could indicate a very healthy forest.
 
 ### Nice to Have:
 
