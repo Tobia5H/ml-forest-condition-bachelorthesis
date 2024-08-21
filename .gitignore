@@ -163,3 +163,7 @@ cython_debug/
 
 # Images
 *.png
+
+# Keys
+keys/*.json
+keys/*.json:Zone.Identifier
