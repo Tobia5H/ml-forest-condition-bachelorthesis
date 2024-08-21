@@ -232,7 +232,7 @@ async function showTilesModal() {
         // Display SweetAlert modal to the user
         Swal.fire({
             title: `Start analysis with ${totalTiles} tiles?`,
-            text: "Up to 50 tiles are recommended for optimal performance. You can increase the tile size to reduce the total number of tiles.",
+            text: "Up to 50 tiles are recommended for optimal performance (Analysis < 30 minutes). You can increase the tile size to reduce the total number of tiles in the settings.",
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Yes, start analysis',
