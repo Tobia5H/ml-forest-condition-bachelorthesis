@@ -5,6 +5,7 @@ import os
 import shutil
 import rasterio
 from datetime import datetime, timedelta
+import time
 
 from detectree2_wrapper import Detectree2
 from coordinate_identifier import GeoImageProcessor
@@ -215,6 +216,8 @@ class FlaskAppWrapper:
                     shutil.rmtree(self.TILES_FOLDER)
                 os.makedirs(self.TILES_FOLDER, exist_ok=True)
 
+                start_time = time.time()
+                
                 image_path = self.tifpngconverter.convert_to_uint8(image_path)
                 output_img = self.dt2.evaluate_image(image_path, model_path)
 
@@ -255,7 +258,7 @@ class FlaskAppWrapper:
                 vi_stats['combined'] = combined_stats
                                
                 end_time = time.time()
-                print(f"Laufzeit: {end_time - start_time:.6f} Sekunden")
+                print(f"Runtime: {end_time - start_time:.6f} seconds")
                 self.logger.info("VI statistics calculated and images created.")
 
                 return jsonify({
@@ -445,3 +448,6 @@ class FlaskAppWrapper:
 app_wrapper = FlaskAppWrapper()
 app = app_wrapper.app
 app_wrapper.prepare()
+
+# Remove this for running flask app with gunicorn
+app.run()
