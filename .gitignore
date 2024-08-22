@@ -167,3 +167,6 @@ cython_debug/
 # Keys
 keys/*.json
 keys/*.json:Zone.Identifier
+
+# Models
+*.pth
