@@ -50,7 +50,7 @@ class FlaskAppWrapper:
                 "tile_height": 40
             },
             "crown": {
-                "confidence": 0.6
+                "confidence": 0.25
             },
             "vi_weights": {
                 "ndvi": 0.2,
@@ -448,5 +448,5 @@ class FlaskAppWrapper:
 app_wrapper = FlaskAppWrapper()
 app = app_wrapper.app
 app_wrapper.prepare()
-# Uncomment app.run() to run the web app on your local device
-# app.run()
+# Remove app.run() to run the flask application with gunicorn
+app.run()
