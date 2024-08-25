@@ -13,6 +13,7 @@ from detectree2.models.outputs import project_to_geojson, stitch_crowns, clean_c
 from detectree2.models.predict import predict_on_data
 from detectree2.models.train import setup_cfg
 from detectron2.engine import DefaultPredictor
+import torch
 
 from logger_config import LoggerConfig
 
@@ -29,6 +30,12 @@ class Detectree2:
         if not self._initialized:
             self.logger = LoggerConfig().get_logger(self.__class__.__name__)
             self.settings = settings
+            if torch.cuda.is_available():
+                self.cuda_available = True
+                self.logger.info(f"CUDA has been detected. Your GPU is: {torch.cuda.get_device_name(0)}. Calculations will be performed on {torch.cuda.get_device_name(0)}")
+            else:
+                self.logger.info("CUDA has NOT been detected. No compatible NVIDIA GPU found. Calculations will be performed on your CPU.")
+                
             self.logger.info(f"Detectree2 initialized with settings: {settings}")
             self._initialized = True
 
@@ -44,7 +51,8 @@ class Detectree2:
         """
         self.logger.info(f"Loading model from {model_path}")
         cfg = setup_cfg(update_model=str(model_path))
-        cfg.MODEL.DEVICE = "cpu"
+        if not self.cuda_available:
+            cfg.MODEL.DEVICE = "cpu"
         self.logger.info("Model configuration loaded.")
         return cfg
 
@@ -82,7 +90,7 @@ class Detectree2:
 
         cfg = self.load_model(model_path)
 
-        if self._check_tile_size(tiles_path):
+        if self._check_tile_size(tiles_path) or self.cuda_available:
             self.logger.info("Predicting on the tiled data.")
             predict_on_data(tiles_path, predictor=DefaultPredictor(cfg))
         else:
