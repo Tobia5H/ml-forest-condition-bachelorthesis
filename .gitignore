@@ -163,6 +163,13 @@ cython_debug/
 
 # Images
 *.png
+tilespred/
+display/
+outputs/
+uploads/
+logs/
+*:Zone.Identifier
+*.pth
 
 # Keys
 keys/*.json
