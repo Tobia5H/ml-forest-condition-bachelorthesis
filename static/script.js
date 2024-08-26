@@ -346,23 +346,6 @@ function insertStatsIntoTable(table, stats) {
 }
 
 
-function insertStatsIntoTable(table, stats) {
-    table.innerHTML = ""; // Clear the table before inserting new rows
-    const headerRow = table.insertRow();
-    const headerCell1 = headerRow.insertCell(0);
-    const headerCell2 = headerRow.insertCell(1);
-    headerCell1.innerText = "Title";
-    headerCell2.innerText = "Value";
-    for (const [key, value] of Object.entries(stats)) {
-        const row = table.insertRow();
-        const cell1 = row.insertCell(0);
-        const cell2 = row.insertCell(1);
-        cell1.innerText = key;
-        cell2.innerText = value;
-    }
-}
-
-
 // Saves user settings for tiling, crown confidence, and VI weights
 $('#save_settings').click(function() {
     const ndviWeight = parseFloat($('#ndvi_weight').val());
