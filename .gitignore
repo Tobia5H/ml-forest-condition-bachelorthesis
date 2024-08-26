@@ -174,3 +174,6 @@ logs/
 # Keys
 keys/*.json
 keys/*.json:Zone.Identifier
+
+# Editor
+.vscode/
