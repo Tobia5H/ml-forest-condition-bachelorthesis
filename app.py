@@ -327,12 +327,12 @@ class FlaskAppWrapper:
                         end_date
                     )
                 elif self.settings["main"]["image_source"] == "basemap.at":
-                    file_path = [self.basemapDownloader.download_tiles(
+                    file_path = self.basemapDownloader.download_tiles(
                         coordinates[0][1],
                         coordinates[0][0],
                         coordinates[2][1],
                         coordinates[2][0]
-                    )]
+                    )
                 else:
                     raise ValueError("Image source was not defined.")
                 
