@@ -402,15 +402,13 @@ $('#save_settings').click(function() {
     });
 });
 
-// Function to update the map based on the selected image source
 function updateMap(imageSource) {
     if (imageSource === 'basemap.at') {
-        // If Basemap.at is selected, limit the view to Austria and use Basemap.at tiles
-        map.setView([47.5162, 14.5501], 8);  // Centered on Austria
-
-        // Remove existing layers
+        // Remove only the tile layer, not the whole map.
         map.eachLayer(function (layer) {
-            map.removeLayer(layer);
+            if (layer instanceof L.TileLayer) {
+                map.removeLayer(layer);
+            }
         });
 
         // Add Basemap.at tile layer
@@ -420,12 +418,11 @@ function updateMap(imageSource) {
             type: 'bmaporthofoto30cm'
         }).addTo(map);
     } else if (imageSource === 'googleearth') {
-        // If Google Earth Engine is selected, reset the map view and use OpenStreetMap tiles
-        map.setView([48.2082, 16.3738], 13);  // Default view back to Vienna, Austria
-
-        // Remove existing layers
+        // Remove only the tile layer, not the whole map.
         map.eachLayer(function (layer) {
-            map.removeLayer(layer);
+            if (layer instanceof L.TileLayer) {
+                map.removeLayer(layer);
+            }
         });
 
         // Add OpenStreetMap tile layer
@@ -434,7 +431,14 @@ function updateMap(imageSource) {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
     }
+
+    // Re-add and re-enable rectangle editing if it exists
+    if (rectangle) {
+        rectangle.addTo(map);
+        rectangle.enableEdit();
+    }
 }
+
 
 // Handles the download of the selected area image
 $('#download-image-interactive').click(function() {
