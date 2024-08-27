@@ -166,14 +166,21 @@ cython_debug/
 tilespred/
 display/
 outputs/
+train_outputs/
 uploads/
+
+# Logs
 logs/
+
+# Miscellaneous
 *:Zone.Identifier
-*.pth
 
 # Keys
 keys/*.json
 keys/*.json:Zone.Identifier
+
+# Models
+*.pth
 
 # Editor
 .vscode/

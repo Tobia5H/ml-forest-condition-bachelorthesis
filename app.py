@@ -218,7 +218,7 @@ class FlaskAppWrapper:
                 os.makedirs(self.TILES_FOLDER, exist_ok=True)
 
                 start_time = time.time()
-
+                
                 image_path = self.tifpngconverter.convert_to_uint8(image_path)
                 output_img = self.dt2.evaluate_image(image_path, model_path)
 
