@@ -10,6 +10,7 @@ import time
 from detectree2_wrapper import Detectree2
 from coordinate_identifier import GeoImageProcessor
 from sentinal2downloader import Sentinel2Downloader
+from basemap_at_downloader import BasemapDownloader
 from image_converter import TifImageConverter
 from vi_statistics_extractor import VIAnalyzer
 from logger_config import LoggerConfig
@@ -41,8 +42,7 @@ class FlaskAppWrapper:
         # Define settings for Detectree2 and calculation of tree health
         self.settings = {
             "main": {
-                "site_path": self.OUTPUT_FOLDER,
-                "tiles_path": self.TILES_FOLDER
+                "images_source": "googleearth"
             },
             "tiling": {
                 "buffer": 30,
@@ -66,6 +66,7 @@ class FlaskAppWrapper:
         self.geoidentifier = GeoImageProcessor()
         self.dt2 = Detectree2(settings=self.settings)
         self.s2Downloader = Sentinel2Downloader()
+        self.basemapDownloader = BasemapDownloader()
         self.tifpngconverter = TifImageConverter(output_directory=self.DISPLAY_FOLDER)
         self.vianalyzer = VIAnalyzer(output_dir=self.OUTPUT_FOLDER)
 
@@ -315,22 +316,34 @@ class FlaskAppWrapper:
                 start_date = data.get('start_date', '2022-01-01')
                 end_date = data.get('end_date', '2023-01-31')
                 coordinates = data['coordinates']
-                file_paths = self.s2Downloader.download_rgb_nvdi_image(
-                    coordinates[0][1],
-                    coordinates[0][0],
-                    coordinates[2][1],
-                    coordinates[2][0],
-                    start_date,
-                    end_date
-                )
-                display_path = self.tifpngconverter.convert(file_paths[0])
+                file_path = None
+                if self.settings["main"]["image_source"] == "googleearth":
+                    file_path = self.s2Downloader.download_rgb_image(
+                        coordinates[0][1],
+                        coordinates[0][0],
+                        coordinates[2][1],
+                        coordinates[2][0],
+                        start_date,
+                        end_date
+                    )
+                elif self.settings["main"]["image_source"] == "basemap.at":
+                    file_path = [self.basemapDownloader.download_tiles(
+                        coordinates[0][1],
+                        coordinates[0][0],
+                        coordinates[2][1],
+                        coordinates[2][0]
+                    )]
+                else:
+                    raise ValueError("Image source was not defined.")
+                
+                display_path = self.tifpngconverter.convert(file_path)
 
                 timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
                 display_url = url_for('display_file', filename=os.path.basename(display_path), v=timestamp)
 
                 self.logger.info(f"Image downloaded and converted for display at {display_path}.")
 
-                return jsonify({'filepath': file_paths[0], 'displaypath': display_url})
+                return jsonify({'filepath': file_path, 'displaypath': display_url})
 
             except Exception as e:
                 self.logger.error(f"Error during image download: {str(e)}")
@@ -380,11 +393,16 @@ class FlaskAppWrapper:
             self.logger.info("Saving new settings.")
             try:
                 new_settings = request.json
+                
                 self.settings['tiling'].update(new_settings.get('tiling', {}))
                 self.settings['crown'].update(new_settings.get('crown', {}))
 
                 if 'vi_weights' in new_settings:
                     self.settings['vi_weights'] = new_settings['vi_weights']
+                
+                if 'image_source' in new_settings.get('main', {}):
+                    self.settings['main']['image_source'] = new_settings['main']['image_source']
+                    self.logger.info(f"Image source updated to {self.settings['main']['image_source']}.")
 
                 self.dt2.settings = self.settings
                 self.logger.info("Settings updated successfully.")
@@ -394,6 +412,7 @@ class FlaskAppWrapper:
             except Exception as e:
                 self.logger.error(f"Error during settings update: {str(e)}")
                 return jsonify({"status": "error", "message": str(e)}), 500
+
 
     def _get_image_crs(self, file_path):
         """

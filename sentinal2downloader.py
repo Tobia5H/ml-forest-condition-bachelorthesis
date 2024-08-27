@@ -252,26 +252,6 @@ class Sentinel2Downloader:
         aoi = ee.Geometry.Rectangle([longitude_min, latitude_min, longitude_max, latitude_max])
         rgb_url = self.get_rgb_download_url(aoi=aoi, start_date=start_date, end_date=end_date, crs=crs)
         return self._get_image_with_request(rgb_url, "rgb")
-            
-    def download_rgb_nvdi_image(self, longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs='EPSG:25833'):
-        """Download links for both RGB and NDVI images using the bounding box coordinates.
-        
-        Args:
-            longitude_min (float): Minimum longitude (west boundary of the area).
-            latitude_min (float): Minimum latitude (south boundary of the area).
-            longitude_max (float): Maximum longitude (east boundary of the area).
-            latitude_max (float): Maximum latitude (north boundary of the area).
-            start_date (str): Start date for filtering the image collection (YYYY-MM-DD).
-            end_date (str): End date for filtering the image collection (YYYY-MM-DD).
-            crs (str, optional): Coordinate Reference System for the output image. Default is 'EPSG:25833'.
-        
-        Returns:
-            list: List of file paths to the downloaded images (RGB and NDVI).
-        """
-        self.logger.info("Downloading both RGB and NDVI images.")
-        nvdi_path = self.download_nvdi_image(longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs)
-        rgb_path = self.download_rgb_image(longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs)
-        return [rgb_path, nvdi_path]
     
     def download_evi_image(self, longitude_min, latitude_min, longitude_max, latitude_max, start_date, end_date, crs='EPSG:25833'):
         self.logger.info("Downloading EVI image.")
