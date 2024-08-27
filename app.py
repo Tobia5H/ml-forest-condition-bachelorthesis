@@ -42,6 +42,8 @@ class FlaskAppWrapper:
         # Define settings for Detectree2 and calculation of tree health
         self.settings = {
             "main": {
+                "site_path": self.OUTPUT_FOLDER,
+                "tiles_path": self.TILES_FOLDER,
                 "images_source": "googleearth"
             },
             "tiling": {
