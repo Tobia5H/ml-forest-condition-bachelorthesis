@@ -157,11 +157,6 @@ map.on('click', function(e) {
 
     rectangle.on('editable:disable editable:drawing:end editable:vertex:dragend editable:dragend', revertStyle);
 
-    // Optionally, disable editing on double-click
-    rectangle.on('dblclick', function() {
-        rectangle.toggleEdit();
-        revertStyle();
-    });
 });
 
 // Handles the image file input change event
@@ -345,6 +340,7 @@ function insertStatsIntoTable(table, stats) {
     }
 }
 
+let previousImageSource = $('input[name="image_source"]:checked').val(); // Store the initial image source
 
 // Saves user settings for tiling, crown confidence, and VI weights
 $('#save_settings').click(function() {
@@ -361,9 +357,11 @@ $('#save_settings').click(function() {
         return;
     }
 
+    const currentImageSource = $('input[name="image_source"]:checked').val();
+
     const settings = {
         main: {
-            image_source: $('input[name="image_source"]:checked').val()
+            image_source: currentImageSource
         },
         tiling: {
             buffer: $('#buffer').val(),
@@ -389,6 +387,14 @@ $('#save_settings').click(function() {
         data: JSON.stringify(settings),
         success: function() {
             showToast("success", "Settings saved successfully", "");
+
+            // Check if the image source has changed
+            if (previousImageSource !== currentImageSource) {
+                // If the image source has changed, update the map
+                updateMap(currentImageSource);
+                // Update the previousImageSource variable to the current value
+                previousImageSource = currentImageSource;
+            }
         },
         error: function(error) {
             showToast("error", "Settings could not be saved.", error.responseJSON.message);
@@ -396,6 +402,39 @@ $('#save_settings').click(function() {
     });
 });
 
+// Function to update the map based on the selected image source
+function updateMap(imageSource) {
+    if (imageSource === 'basemap.at') {
+        // If Basemap.at is selected, limit the view to Austria and use Basemap.at tiles
+        map.setView([47.5162, 14.5501], 8);  // Centered on Austria
+
+        // Remove existing layers
+        map.eachLayer(function (layer) {
+            map.removeLayer(layer);
+        });
+
+        // Add Basemap.at tile layer
+        L.tileLayer('https://maps.wien.gv.at/basemap/{type}/normal/google3857/{z}/{y}/{x}.jpeg', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.basemap.at/">Basemap.at</a>',
+            type: 'bmaporthofoto30cm'
+        }).addTo(map);
+    } else if (imageSource === 'googleearth') {
+        // If Google Earth Engine is selected, reset the map view and use OpenStreetMap tiles
+        map.setView([48.2082, 16.3738], 13);  // Default view back to Vienna, Austria
+
+        // Remove existing layers
+        map.eachLayer(function (layer) {
+            map.removeLayer(layer);
+        });
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+    }
+}
 
 // Handles the download of the selected area image
 $('#download-image-interactive').click(function() {
@@ -414,6 +453,10 @@ $('#download-image-interactive').click(function() {
 
     const startDate = $('#start-date').val();
     const endDate = $('#end-date').val();
+
+    if (!startDate || !endDate) {
+        showToast("info", "No Date Selected", "Start- or End Date have not been selected. Defaulting to 2022-01-01 until 2023-01-31");
+    }
 
     $('#loading-spinner-input').show();
     $('#input_image').hide();
