@@ -362,6 +362,9 @@ $('#save_settings').click(function() {
     }
 
     const settings = {
+        main: {
+            image_source: $('input[name="image_source"]:checked').val()
+        },
         tiling: {
             buffer: $('#buffer').val(),
             tile_width: $('#tile_width').val(),
