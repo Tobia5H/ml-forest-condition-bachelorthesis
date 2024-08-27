@@ -113,7 +113,7 @@ class BasemapDownloader:
                     return None
         except Exception as e:
             self.logger.error(f"Error downloading {tile_url}: {str(e)}")
-            return None
+            raise RuntimeError("Error downloading picture from basemap.at.")
 
     async def _download_tiles_in_parallel_async(self, tile_urls):
         """
@@ -141,7 +141,7 @@ class BasemapDownloader:
                     self.logger.info(f"Downloaded {i} of {total_tiles} tiles.")
             return tile_paths
 
-    def download_tiles(self, lat_min, lon_min, lat_max, lon_max, zoom=19, layer="bmaporthofoto30cm", style="normal", tile_matrix_set="google3857", output_file="uploads/basemap_rgb.tif"):
+    def download_tiles(self, lon_min, lat_min, lon_max, lat_max, zoom=19, layer="bmaporthofoto30cm", style="normal", tile_matrix_set="google3857", output_file="uploads/basemap_rgb.tif"):
         """
         Download and assemble tiles to cover the area defined by the bounds and save as a GeoTIFF file.
 
@@ -179,6 +179,7 @@ class BasemapDownloader:
 
         self._prepare_output_directory()
         self.logger.info(f"GeoTIFF saved as {output_file}")
+        return output_file
 
     def _assemble_tiles(self, tile_paths, min_tile_x, max_tile_x, min_tile_y, max_tile_y):
         """
