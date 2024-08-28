@@ -397,19 +397,27 @@ button:hover .button-text {
 	line-height: 1.2;
 }
 
+.image-container-table {
+	display: flex;
+	flex-direction: column;
+	align-items: start;
+	position: relative;
+	width: 60%;
+}
+
 .vi-container {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	position: relative;
-	width: 60%;
+	width: 100%;
 	margin: auto;
 }
 
 .vi-values {
     margin: 20px auto;
     width: 90%;
-    max-width: 1000px;
+    max-width: 800px;
     display: none;
     flex-direction: column;
     align-items: center;
