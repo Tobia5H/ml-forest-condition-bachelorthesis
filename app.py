@@ -129,64 +129,7 @@ class FlaskAppWrapper:
                     crs = self._get_image_crs(file_path)
 
                     picture_corner_lat_lng = self.geoidentifier.process_image(file_path)
-                    nvdi_path = self.s2Downloader.download_nvdi_image(
-                        picture_corner_lat_lng[0][1],
-                        picture_corner_lat_lng[0][0],
-                        picture_corner_lat_lng[2][1],
-                        picture_corner_lat_lng[2][0],
-                        start_date,
-                        end_date,
-                        crs
-                    )
-                    self.logger.info(f"NDVI image downloaded to {nvdi_path}.")
-                    
-                    evi_path = self.s2Downloader.download_evi_image(
-                        picture_corner_lat_lng[0][1],
-                        picture_corner_lat_lng[0][0],
-                        picture_corner_lat_lng[2][1],
-                        picture_corner_lat_lng[2][0],
-                        start_date,
-                        end_date,
-                        crs
-                    )
-                    self.logger.info(f"EVI image downloaded to {evi_path}.")
-                    
-                    gndvi_path = self.s2Downloader.download_gndvi_image(
-                        picture_corner_lat_lng[0][1],
-                        picture_corner_lat_lng[0][0],
-                        picture_corner_lat_lng[2][1],
-                        picture_corner_lat_lng[2][0],
-                        start_date,
-                        end_date,
-                        crs
-                    )
-                    self.logger.info(f"GNDVI image downloaded to {gndvi_path}.")
-
-                    ci_green_path = self.s2Downloader.download_chlorophyll_index_image(
-                        picture_corner_lat_lng[0][1],
-                        picture_corner_lat_lng[0][0],
-                        picture_corner_lat_lng[2][1],
-                        picture_corner_lat_lng[2][0],
-                        start_date,
-                        end_date,
-                        crs,
-                        index_type='green'
-                    )
-                    self.logger.info(f"Chlorophyll Index (green) image downloaded to {ci_green_path}.")
-                    
-                    ci_red_edge_path = self.s2Downloader.download_chlorophyll_index_image(
-                        picture_corner_lat_lng[0][1],
-                        picture_corner_lat_lng[0][0],
-                        picture_corner_lat_lng[2][1],
-                        picture_corner_lat_lng[2][0],
-                        start_date,
-                        end_date,
-                        crs,
-                        index_type='red-edge'
-                    )
-                    self.logger.info(f"Chlorophyll Index (red-edge) image downloaded to {ci_red_edge_path}.")
-
-
+                    self._download_vegetation_indices(picture_corner_lat_lng, start_date, end_date, crs)
 
                     display_path = self.tifpngconverter.convert(file_path)
                     self.logger.info(f"Image converted for display at {display_path}.")
@@ -315,10 +258,17 @@ class FlaskAppWrapper:
             try:
                 self._clean_folder_structure()
                 data = request.json
-                start_date = data.get('start_date', '2022-01-01')
-                end_date = data.get('end_date', '2023-01-31')
+                start_date = data.get('start_date')
+                if not start_date:
+                    start_date = '2022-01-01'
+
+                end_date = data.get('end_date')
+                if not end_date:
+                    end_date = '2023-01-31'
+                    
                 coordinates = data['coordinates']
                 file_path = None
+                
                 if self.settings["main"]["image_source"] == "googleearth":
                     file_path = self.s2Downloader.download_rgb_image(
                         coordinates[0][1],
@@ -338,8 +288,11 @@ class FlaskAppWrapper:
                 else:
                     raise ValueError("Image source was not defined.")
                 
+                crs = self._get_image_crs(file_path)
+                picture_corner_lat_lng = self.geoidentifier.process_image(file_path)
+                self._download_vegetation_indices(picture_corner_lat_lng, start_date, end_date, crs)
+                
                 display_path = self.tifpngconverter.convert(file_path)
-
                 timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
                 display_url = url_for('display_file', filename=os.path.basename(display_path), v=timestamp)
 
@@ -414,6 +367,76 @@ class FlaskAppWrapper:
             except Exception as e:
                 self.logger.error(f"Error during settings update: {str(e)}")
                 return jsonify({"status": "error", "message": str(e)}), 500
+            
+    def _download_vegetation_indices(self, picture_corner_lat_lng, start_date, end_date, crs):
+        """
+        Downloads various vegetation indices using the provided coordinates and dates.
+
+        Args:
+            picture_corner_lat_lng (list): List containing the coordinates of the picture corners.
+            start_date (str): Start date for downloading images.
+            end_date (str): End date for downloading images.
+            crs (str): Coordinate reference system.
+
+        Returns:
+            None
+        """
+        nvdi_path = self.s2Downloader.download_nvdi_image(
+            picture_corner_lat_lng[0][1],
+            picture_corner_lat_lng[0][0],
+            picture_corner_lat_lng[2][1],
+            picture_corner_lat_lng[2][0],
+            start_date,
+            end_date,
+            crs
+        )
+        self.logger.info(f"NDVI image downloaded to {nvdi_path}.")
+
+        evi_path = self.s2Downloader.download_evi_image(
+            picture_corner_lat_lng[0][1],
+            picture_corner_lat_lng[0][0],
+            picture_corner_lat_lng[2][1],
+            picture_corner_lat_lng[2][0],
+            start_date,
+            end_date,
+            crs
+        )
+        self.logger.info(f"EVI image downloaded to {evi_path}.")
+
+        gndvi_path = self.s2Downloader.download_gndvi_image(
+            picture_corner_lat_lng[0][1],
+            picture_corner_lat_lng[0][0],
+            picture_corner_lat_lng[2][1],
+            picture_corner_lat_lng[2][0],
+            start_date,
+            end_date,
+            crs
+        )
+        self.logger.info(f"GNDVI image downloaded to {gndvi_path}.")
+
+        ci_green_path = self.s2Downloader.download_chlorophyll_index_image(
+            picture_corner_lat_lng[0][1],
+            picture_corner_lat_lng[0][0],
+            picture_corner_lat_lng[2][1],
+            picture_corner_lat_lng[2][0],
+            start_date,
+            end_date,
+            crs,
+            index_type='green'
+        )
+        self.logger.info(f"Chlorophyll Index (green) image downloaded to {ci_green_path}.")
+
+        ci_red_edge_path = self.s2Downloader.download_chlorophyll_index_image(
+            picture_corner_lat_lng[0][1],
+            picture_corner_lat_lng[0][0],
+            picture_corner_lat_lng[2][1],
+            picture_corner_lat_lng[2][0],
+            start_date,
+            end_date,
+            crs,
+            index_type='red-edge'
+        )
+        self.logger.info(f"Chlorophyll Index (red-edge) image downloaded to {ci_red_edge_path}.")
 
 
     def _get_image_crs(self, file_path):
