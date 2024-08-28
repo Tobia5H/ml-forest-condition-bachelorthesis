@@ -44,7 +44,7 @@ class FlaskAppWrapper:
             "main": {
                 "site_path": self.OUTPUT_FOLDER,
                 "tiles_path": self.TILES_FOLDER,
-                "images_source": "googleearth"
+                "image_source": "googleearth"
             },
             "tiling": {
                 "buffer": 30,
