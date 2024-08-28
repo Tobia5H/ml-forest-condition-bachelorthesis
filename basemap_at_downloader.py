@@ -9,6 +9,7 @@ import numpy as np
 import rasterio
 from rasterio.transform import from_bounds
 from concurrent.futures import ThreadPoolExecutor
+from pyproj import Transformer
 from logger_config import LoggerConfig
 
 class BasemapDownloader:
@@ -20,22 +21,24 @@ class BasemapDownloader:
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, tile_size=256, output_dir="downloaded_tiles", crs="EPSG:3857"):
+    def __init__(self, tile_size=256, output_dir="downloaded_tiles", crs="EPSG:25833"):
         """
         Initialize the BasemapDownloader with important variables.
 
         Args:
             tile_size (int, optional): The size of each tile in pixels. Defaults to 256.
             output_dir (str, optional): The directory where tiles will be saved. Defaults to "downloaded_tiles".
-            crs (str, optional): The coordinate reference system for the output file. Defaults to "EPSG:3857".
+            crs (str, optional): The coordinate reference system for the output file. Defaults to "EPSG:25833".
         """
         if not self._initialized:
             self.tile_size = tile_size
             self.output_dir = output_dir
             self.crs = crs
             self.logger = LoggerConfig().get_logger(self.__class__.__name__)
+            self.transformer_to_3857 = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
+            self.transformer_to_25833 = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
             self._prepare_output_directory()
-            self.logger.info("Basemap.at Downloader has been intialized successfully.")
+            self.logger.info("Basemap.at Downloader has been initialized successfully.")
             self.logger.info("This downloader uses the data source: basemap.at, which you can access under: https://basemap.at/")
             self._initialized = True
 
@@ -53,15 +56,15 @@ class BasemapDownloader:
 
     def _calculate_tile_coordinates(self, lat_deg, lon_deg, zoom):
         """
-        Calculate tile coordinates (x, y) for given geographic coordinates and zoom level.
+        Calculate tile coordinates (x, y) for given geographic coordinates (EPSG:4326) and zoom level.
 
         Args:
-            lat_deg (float): Latitude in degrees.
-            lon_deg (float): Longitude in degrees.
+            lat_deg (float): Latitude in degrees (EPSG:4326).
+            lon_deg (float): Longitude in degrees (EPSG:4326).
             zoom (int): Zoom level.
 
         Returns:
-            tuple: A tuple containing the x and y tile coordinates.
+            tuple: A tuple containing the x and y tile coordinates (EPSG:3857).
         """
         lat_rad = math.radians(lat_deg)
         n = 2.0 ** zoom
@@ -159,10 +162,18 @@ class BasemapDownloader:
         Returns:
             None
         """
-        min_tile_x, max_tile_x, min_tile_y, max_tile_y = self._calculate_tile_range(lat_min, lon_min, lat_max, lon_max, zoom)
-        total_tiles = (max_tile_x - min_tile_x + 1) * (max_tile_y - min_tile_y + 1)
-        self.logger.info(f"Total number of required tiles: {total_tiles}")
+        # Transform the input bounds from EPSG:4326 to EPSG:3857 for tile calculation
+        min_x_3857, min_y_3857 = self.transformer_to_3857.transform(lon_min, lat_min)
+        max_x_3857, max_y_3857 = self.transformer_to_3857.transform(lon_max, lat_max)
 
+        # Transform the input bounds from EPSG:4326 to EPSG:25833 for final GeoTIFF bounds
+        min_x_25833, min_y_25833 = self.transformer_to_25833.transform(lon_min, lat_min)
+        max_x_25833, max_y_25833 = self.transformer_to_25833.transform(lon_max, lat_max)
+
+        # Continue with existing code to calculate tile ranges and download tiles using the transformed 3857 coordinates
+        min_tile_x, max_tile_x, min_tile_y, max_tile_y = self._calculate_tile_range(lat_min, lon_min, lat_max, lon_max, zoom)
+
+        # Use the min and max x, y tile coordinates to download and assemble the tiles as before
         tile_urls = [
             (f"https://mapsneu.wien.gv.at/basemap/{layer}/{style}/{tile_matrix_set}/{zoom}/{y}/{x}.jpeg", x, y)
             for y in range(min_tile_y, max_tile_y + 1)
@@ -173,9 +184,9 @@ class BasemapDownloader:
 
         self.logger.info(f"Assembling image from {len(tile_paths)} tiles.")
         full_image = self._assemble_tiles(tile_paths, min_tile_x, max_tile_x, min_tile_y, max_tile_y)
-        self.logger.info(f"Image successfully assembled from {len(tile_paths)} tiles.")
-        
-        self._save_as_geotiff(full_image, output_file, min_tile_x, max_tile_x, min_tile_y, max_tile_y)
+
+        # Save the assembled image as a GeoTIFF with EPSG:25833 CRS
+        self._save_as_geotiff(full_image, output_file, min_x_25833, max_x_25833, min_y_25833, max_y_25833)
 
         self._prepare_output_directory()
         self.logger.info(f"GeoTIFF saved as {output_file}")
@@ -203,28 +214,23 @@ class BasemapDownloader:
             os.remove(tile_path)
         return full_image
 
-    def _save_as_geotiff(self, full_image, output_file, min_tile_x, max_tile_x, min_tile_y, max_tile_y):
+    def _save_as_geotiff(self, full_image, output_file, min_x_25833, max_x_25833, min_y_25833, max_y_25833):
         """
-        Save the assembled image as a GeoTIFF file.
+        Save the assembled image as a GeoTIFF file in EPSG:25833.
 
         Args:
             full_image (PIL.Image.Image): The assembled image.
             output_file (str): The name of the output GeoTIFF file.
-            min_tile_x (int): Minimum tile x coordinate.
-            max_tile_x (int): Maximum tile x coordinate.
-            min_tile_y (int): Minimum tile y coordinate.
-            max_tile_y (int): Maximum tile y coordinate.
+            min_x_25833 (float): Minimum x coordinate in EPSG:25833.
+            max_x_25833 (float): Maximum x coordinate in EPSG:25833.
+            min_y_25833 (float): Minimum y coordinate in EPSG:25833.
+            max_y_25833 (float): Maximum y coordinate in EPSG:25833.
 
         Returns:
             None
         """
         image_array = np.array(full_image)
-        west = min_tile_x * self.tile_size
-        north = min_tile_y * self.tile_size
-        east = (max_tile_x + 1) * self.tile_size
-        south = (max_tile_y + 1) * self.tile_size
-
-        transform = from_bounds(west, south, east, north, full_image.width, full_image.height)
+        transform = from_bounds(min_x_25833, min_y_25833, max_x_25833, max_y_25833, full_image.width, full_image.height)
 
         with rasterio.open(output_file, 'w', driver='GTiff', height=full_image.height, width=full_image.width, count=3,
                            dtype=image_array.dtype, crs=self.crs, transform=transform) as dst:
