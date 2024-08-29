@@ -52,9 +52,11 @@ class Detectree2:
         """
         self.logger.info(f"Loading model from {model_path}")
         cfg = setup_cfg(update_model=str(model_path))
-        if not self.cudaAvailable:
+        if self.cudaAvailable:
+            cfg.MODEL.DEVICE = "cuda"
+        else:
             cfg.MODEL.DEVICE = "cpu"
-        self.logger.info("Model configuration loaded.")
+        self.logger.info(f"Model configuration loaded and device set to {cfg.MODEL.DEVICE}")
         return cfg
 
     def evaluate_image(self, image_path, model_path):
