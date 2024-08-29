@@ -21,32 +21,32 @@
     
         <div class="sidebar-section">
             <h3>Tiling Settings</h3>
-            <label for="buffer">Buffer in meters</label>
+            <label for="buffer">Buffer in meters</label><br>
             <input type="number" id="buffer" value="{{ settings['tiling']['buffer'] }}"><br>
-            <label for="tile_width">Tile Width in meters</label>
+            <label for="tile_width">Tile Width in meters</label><br>
             <input type="number" id="tile_width" value="{{ settings['tiling']['tile_width'] }}"><br>
-            <label for="tile_height">Tile Height in meters</label>
-            <input type="number" id="tile_height" value="{{ settings['tiling']['tile_height'] }}">
+            <label for="tile_height">Tile Height in meters</label><br>
+            <input type="number" id="tile_height" value="{{ settings['tiling']['tile_height'] }}"><br>
         </div>
     
         <div class="sidebar-section">
             <h3>Tree Crown Settings</h3>
-            <label for="confidence">Confidence</label>
-            <input type="number" step="0.1" id="confidence" value="{{ settings['crown']['confidence'] }}">
+            <label for="confidence">Confidence</label><br>
+            <input type="number" step="0.1" id="confidence" value="{{ settings['crown']['confidence'] }}"><br>
         </div>
     
         <div class="sidebar-section">
             <h3>Vegetation Index Weighting</h3>
-            <label for="ndvi_weight">NDVI Weight</label>
+            <label for="ndvi_weight">NDVI Weight</label><br>
             <input type="number" step="0.01" id="ndvi_weight" value="0.2"><br>
-            <label for="evi_weight">EVI Weight</label>
+            <label for="evi_weight">EVI Weight</label><br>
             <input type="number" step="0.01" id="evi_weight" value="0.2"><br>
-            <label for="gndvi_weight">GNDVI Weight</label>
+            <label for="gndvi_weight">GNDVI Weight</label><br>
             <input type="number" step="0.01" id="gndvi_weight" value="0.2"><br>
-            <label for="cigreen_weight">Chlorophyll Index Green Weight</label>
+            <label for="cigreen_weight">Chlorophyll Index Green Weight</label><br>
             <input type="number" step="0.01" id="cigreen_weight" value="0.2"><br>
-            <label for="ciredge_weight">Chlorophyll Index Red-Edge Weight</label>
-            <input type="number" step="0.01" id="ciredge_weight" value="0.2">
+            <label for="ciredge_weight">Chlorophyll Index Red-Edge Weight</label><br>
+            <input type="number" step="0.01" id="ciredge_weight" value="0.2"><br>
         </div>
 
         <h3>Image Source</h3>
@@ -57,7 +57,7 @@
         <label>
             <input type="radio" id="basemap" name="image_source" value="basemap.at">
             Basemap.at (only for Austria - ~31cm/px)
-        </label>
+        </label><br>
     
         <button id="save_settings" style="margin-top: 20px;">Save Settings</button>
     </div>    
