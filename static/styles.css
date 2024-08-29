@@ -25,6 +25,10 @@ body {
 	margin-bottom: 20px;
 }
 
+#sidebar h3 {
+	margin: 0;
+}
+
 #sidebar .close-btn {
 	position: absolute;
 	top: 10px;
