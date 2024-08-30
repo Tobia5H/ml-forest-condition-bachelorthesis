@@ -507,3 +507,25 @@ function showToast(type, title, message) {
         }
     });
 }
+
+function showInfo() {
+    Swal.fire({
+        title: 'Help & Tutorials',
+        icon: "info",
+        html: `
+            <p>Select a tutorial below:</p>
+            <button id="interactive-map-tutorial" class="swal2-styled">Interactive Map Tutorial</button>
+            <button id="upload-picture-tutorial" class="swal2-styled">Analyze Uploaded Picture Tutorial</button>
+        `,
+        showCloseButton: true,
+        showConfirmButton: false,
+        didOpen: () => {
+            document.getElementById('interactive-map-tutorial').addEventListener('click', () => {
+                window.open('https://youtu.be/eR_paF66H4I', '_blank');
+            });
+            document.getElementById('upload-picture-tutorial').addEventListener('click', () => {
+                window.open('https://youtu.be/r_s9CFuTuA0', '_blank');
+            });
+        }
+    });
+}
